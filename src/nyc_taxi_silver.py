@@ -35,8 +35,8 @@ class NYC_Taxi_Silver_Loader:
         self.run_id = run_id
 
         if checkpoint_schema is None:
-            if "." in target_table:
-                checkpoint_schema = ".".join(target_table.split(".")[:-1])
+            if "." in self.target_table:
+                checkpoint_schema = ".".join(self.target_table.split(".")[:-1])
             else:
                 checkpoint_schema = "default"
 

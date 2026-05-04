@@ -17,6 +17,10 @@ def spark():
                 .master("local[*]")
                 .appName("SilverExploration")
                 .config("spark.sql.shuffle.partitions", "1")
+                .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
+                .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog")
+                # Maven 包下载坐标 (根据你的 PySpark 版本调整)
+                .config("spark.jars.packages", "io.delta:delta-spark_2.12:3.1.0")
                 .getOrCreate())
         
 @pytest.fixture
