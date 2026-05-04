@@ -13,7 +13,7 @@ class TestSilverUnitLogic:
     def test_schema_validation_rejects_missing_columns(self, spark):
         print(f"DEBUG: Executing test on Spark Version {spark.version}")
         
-        loader = NYC_Taxi_Silver_Loader(spark, "run_test_001", "silver_taxi_trips")
+        loader = NYC_Taxi_Silver_Loader(spark, run_id="run_test_001")
         
         # Intentionally providing only 'vendor_id', missing the required 'total_amount' and 'YYYYMM'
         bad_bronze_df = spark.createDataFrame([("V1",)], ["vendor_id"])
@@ -48,9 +48,6 @@ class TestSilverUnitLogic:
         ]
         test_df = spark.createDataFrame(input_data, input_schema)
         
-        for col_name in loader.EXPECTED_BRONZE_COLS:
-            if col_name not in test_df.columns:
-                test_df = test_df.withColumn(col_name, F.lit(None))
         
         # 修复点 4：必须先过 apply_transformations 提取出 temp_eff 等特征列
         enriched_df = loader.apply_transformations(test_df)

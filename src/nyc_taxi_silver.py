@@ -7,6 +7,7 @@ import uuid
 from pyspark.sql.utils import AnalysisException 
 import logging 
 import re
+from config import PipelineConfig 
 
 class NYC_Taxi_Silver_Loader:
     """
@@ -22,14 +23,15 @@ class NYC_Taxi_Silver_Loader:
         self, 
         spark, 
         run_id: str, 
-        target_table: str, 
-        audit_table: str = "process_silver.pipeline_metrics", 
+        target_table: str = None, 
+        audit_table: str = None, 
         checkpoint_schema: str = None,
         ):
         self.spark = spark
-        self.target_table = target_table
-        self.quarantine_table = f"{target_table}_quarantine"
-        self.audit_table = audit_table
+        self.target_table = target_table or PipelineConfig.get_table_path("target_silver")
+        self.audit_table = audit_table or PipelineConfig.get_table_path("pipeline_metrics")
+        
+        self.quarantine_table = f"{self.target_table}_quarantine"
         self.run_id = run_id
 
         if checkpoint_schema is None:

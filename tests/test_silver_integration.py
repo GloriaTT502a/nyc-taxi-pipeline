@@ -3,21 +3,24 @@ import uuid
 import datetime
 import pyspark.sql.functions as F
 from src.nyc_taxi_silver import NYC_Taxi_Silver_Loader
+from src.config import PipelineConfig
 
 class TestSilverIntegration:
 
     def test_full_pipeline_and_partition_overwrite(self, spark):
 
-        spark.sql("CREATE SCHEMA IF NOT EXISTS nyc.process_silver") 
+        PipelineConfig.CATALOG = ""  # 本地测试强制设空，规避多层级报错
+        PipelineConfig.DATABASE = "process_silver"
 
+        spark.sql(f"CREATE DATABASE IF NOT EXISTS {PipelineConfig.DATABASE}")
         # ==========================================================
         # 1. 彻底抛弃本地路径，使用 UC 托管表名 (完美避开 /tmp 报错)
         # ==========================================================
         test_suffix = uuid.uuid4().hex[:6]
         
         # 这里就是传给 Loader 的 target_table！绝对没有任何 /tmp/ 路径！
-        target_table = f"process_silver.target_silver_test_{test_suffix}"
-        audit_table = f"process_silver.audit_metrics_test_{test_suffix}"
+        target_table = PipelineConfig.get_table_path(f"target_silver_test_{test_suffix}")
+        audit_table = PipelineConfig.get_table_path(f"audit_metrics_test_{test_suffix}")
 
         #spark.conf.set("spark.sql.sources.partitionOverwriteMode", "dynamic")
 
