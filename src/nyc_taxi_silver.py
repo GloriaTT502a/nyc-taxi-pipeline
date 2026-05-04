@@ -6,6 +6,8 @@ from datetime import datetime, timezone
 import uuid
 from pyspark.sql.utils import AnalysisException 
 import logging 
+import re
+from src.config import PipelineConfig 
 
 class NYC_Taxi_Silver_Loader:
     """
@@ -21,55 +23,65 @@ class NYC_Taxi_Silver_Loader:
         self, 
         spark, 
         run_id: str, 
-        target_table: str, 
-        audit_table: str = "nyc.process_silver.pipeline_metrics", 
-        checkpoint_dir_prefix: str = "/Volumes/nyc/process_silver/checkpoint"
+        target_table: str = None, 
+        audit_table: str = None, 
+        checkpoint_schema: str = None,
         ):
         self.spark = spark
-        self.target_table = target_table
-        self.quarantine_table = f"{target_table}_quarantine"
-        self.audit_table = audit_table 
+        self.target_table = target_table or PipelineConfig.get_table_path("target_silver")
+        self.audit_table = audit_table or PipelineConfig.get_table_path("pipeline_metrics")
+        
+        self.quarantine_table = f"{self.target_table}_quarantine"
         self.run_id = run_id
 
-        self.checkpoint_dir = f"{checkpoint_dir_prefix}/run_id={self.run_id}" 
+        if checkpoint_schema is None:
+            if "." in self.target_table:
+                checkpoint_schema = ".".join(self.target_table.split(".")[:-1])
+            else:
+                checkpoint_schema = "default"
+
+        self.checkpoint_schema = checkpoint_schema 
 
         #self.spark.sparkContext.setCheckpointDir(checkpoint_dir) 
 
         self.logger = logging.getLogger(self.__class__.__name__)
         self.logger.setLevel(logging.INFO)
         
-        self.EXPECTED_BRONZE_COLS = [
-            "vendor_id",
-            "pickup_datetime",
-            "dropoff_datetime",
-            "passenger_count",
-            "trip_distance",
-            "rate_code",
-            "store_and_fwd_flag",
-            "pickup_longitude",
-            "pickup_latitude",
-            "dropoff_longitude",
-            "dropoff_latitude",
-            "PULocationID",
-            "DOLocationID",
-            "payment_type",
-            "fare_amount",
-            "surcharge",
-            "mta_tax",
-            "tip_amount",
-            "tolls_amount",
-            "improvement_surcharge",
-            "congestion_surcharge",
-            "airport_fee",
-            "cbd_congestion_fee",
-            "total_amount",
-            "YYYY",
-            "YYYYMM",
-            "_run_id",
-            "_load_timestamp",
-            "_input_file"
-        ]
-        # 优化：将业务规则封装，便于后续作为配置文件(如 JSON/YAML)动态加载
+        self.BRONZE_SCHEMA = {
+            "vendor_id": {"type": "string", "required": False},
+            "pickup_datetime": {"type": "timestamp", "required": False},
+            "dropoff_datetime": {"type": "timestamp", "required": False},
+            "passenger_count": {"type": "integer", "required": False},
+            "trip_distance": {"type": "double", "required": False},
+            "rate_code": {"type": "integer", "required": False},
+            "store_and_fwd_flag": {"type": "string", "required": False},
+            "pickup_longitude": {"type": "double", "required": False},
+            "pickup_latitude": {"type": "double", "required": False},
+            "dropoff_longitude": {"type": "double", "required": False},
+            "dropoff_latitude": {"type": "double", "required": False},
+            "PULocationID": {"type": "integer", "required": False},
+            "DOLocationID": {"type": "integer", "required": False},
+            "payment_type": {"type": "string", "required": False},
+            "fare_amount": {"type": "double", "required": False},
+            "surcharge": {"type": "double", "required": False},
+            "mta_tax": {"type": "double", "required": False},
+            "tip_amount": {"type": "double", "required": False},
+            "tolls_amount": {"type": "double", "required": False},
+            "improvement_surcharge": {"type": "double", "required": False},
+            "congestion_surcharge": {"type": "double", "required": False},
+            "airport_fee": {"type": "double", "required": False},
+            "cbd_congestion_fee": {"type": "double", "required": False},
+            "total_amount": {"type": "double", "required": True},
+            "YYYY": {"type": "integer", "required": False},
+            "YYYYMM": {"type": "integer", "required": True},
+            "_run_id": {"type": "string", "required": False},
+            "_load_timestamp": {"type": "timestamp", "required": False},
+            "_input_file": {"type": "string", "required": False}
+        }
+
+        self.EXPECTED_BRONZE_COLS = list(self.BRONZE_SCHEMA.keys())
+
+        # Optimization: Encapsulate business rules for easier dynamic loading as configuration files (such as JSON/YAML) later. 
         self.BASE_RULES = {
             "missing_pickup": F.col("pickup_datetime").isNull(),
             "missing_dropoff": F.col("dropoff_datetime").isNull(),
@@ -87,7 +99,7 @@ class NYC_Taxi_Silver_Loader:
 
     def apply_transformations(self, bronze_df: DataFrame) -> DataFrame: 
         # Check whether any columns missing
-        self._validate_schema(bronze_df)
+        bronze_df = self._ensure_schema(bronze_df)
         
         base_cols = [
             F.col(c).alias("bronze_run_id") if c == "_run_id" else 
@@ -143,24 +155,40 @@ class NYC_Taxi_Silver_Loader:
     
     
     def process(self, bronze_df: DataFrame) -> None: 
+        self.spark.sql(f"CREATE SCHEMA IF NOT EXISTS {self.checkpoint_schema}") 
+
         self.logger.info(f"Starting silver pipeline. run_id={self.run_id}")
         """
         主处理流程：特征提取 -> 规则校验 -> 持久化缓存 -> 数据分流写入
         """
+
+        # 1. 剥离可能存在的路径前缀或 catalog.schema，只保留最后的表名核心
+        base_target = str(self.target_table).split("/")[-1].split(".")[-1]
+        
+        # 2. 拼接原始表名 (包含 run_id)
+        raw_chk_name = f"chk_{base_target}_{self.run_id}"
+        
+        # 3. 核心净化：将所有非字母、数字、下划线的字符全部替换为下划线 "_"
+        clean_chk_name = re.sub(r'[^a-zA-Z0-9_]', '_', raw_chk_name)
+        
+        # 4. 组装成最终的 UC 临时表名
+        self.checkpoint_table = f"{self.checkpoint_schema}.{clean_chk_name}" 
+
+
         try: 
             enriched_df = self.apply_transformations(bronze_df) 
             dq_df = self.apply_dq_rules(enriched_df) 
 
             self.logger.info("Triggering Checkpoint to truncate lineage and materialize data...") 
-            # Write to checkpoint path
+            
             (
                 dq_df.write
-                .format("delta")
                 .mode("overwrite")
-                .save(self.checkpoint_dir)
-            ) 
-            # Read data from checkpoint path 
-            checkpointed_dq_df = self.spark.read.format("delta").load(self.checkpoint_dir) 
+                .format("delta")
+                .saveAsTable(self.checkpoint_table)
+            )
+
+            checkpointed_dq_df = self.spark.read.table(self.checkpoint_table)
 
             metrics_rows = checkpointed_dq_df.groupBy("is_valid").count().collect() 
 
@@ -195,20 +223,21 @@ class NYC_Taxi_Silver_Loader:
             self.logger.exception(f"Pipeline failed: {str(e)}")
             raise
         finally: 
-            self.logger.info(f"Cleaning up temporary checkpoint directory: {self.checkpoint_dir}")
+            self.logger.info(f"Cleaning up temporary checkpoint table: {self.checkpoint_table}")
             try:
-                # 尝试使用 dbutils 删除
-                from pyspark.dbutils import DBUtils
-                dbutils = DBUtils(self.spark)
-                dbutils.fs.rm(self.checkpoint_dir, recurse=True)
-                self.logger.info("Cleanup successful. Checkpoint folder removed.")
+                # 核心修复：清理表而不是清理目录
+                self.spark.sql(f"DROP TABLE IF EXISTS {self.checkpoint_table}")
+                self.logger.info("Cleanup successful. Checkpoint table dropped.")
             except Exception as e:
-                self.logger.warning(f"Failed to clean up checkpoint dir: {e}")
+                self.logger.warning(f"Failed to clean up checkpoint table: {e}")
 
 
     def _write_to_delta(self, df: DataFrame, table_name: str) -> None:
         # 此时 df 已经被 persist，这里的 collect() 是极速的，只扫描内存中的数据
         # partitions_rows = df.select("YYYYMM").distinct().collect()
+        
+        partition_type = self.BRONZE_SCHEMA["YYYYMM"]["type"] 
+
         partitions_rows = [
             row["YYYYMM"]
             for row in (
@@ -222,21 +251,28 @@ class NYC_Taxi_Silver_Loader:
             self.logger.warning(f"No data to write for {table_name}")
             return
 
-        partitions = [str(p) for p in partitions_rows]
-        replace_cond = (
-            f"YYYYMM IN ({','.join(partitions)})"
-        )
+        if partition_type == "string":
+            partition_values = ",".join(
+                [f"'{p}'" for p in partitions_rows]
+            )
+        else:
+            partition_values = ",".join(
+                map(str, partitions_rows)
+            )     
+
+        replace_cond = f"YYYYMM IN ({partition_values})"                              
         
         # 使用 Spark 3.x / Delta Lake 的原生动态分区覆盖也是一种选择
         # 但在生产环境中，显式指定 replaceWhere 更加安全，能防止意料之外的全局覆盖
         (
-            df.write 
-                .format("delta") 
-                .mode("overwrite") 
-                .option("replaceWhere", replace_cond) 
-                .saveAsTable(table_name)
-        )
-        self.logger.info(f"Successfully loaded data to {table_name} for partitions {partitions}") 
+            df.write
+            .format("delta")
+            .mode("overwrite")
+            .option("replaceWhere", replace_cond)
+            .saveAsTable(table_name)   # ✅ 永远用表
+        ) 
+
+        self.logger.info(f"Successfully loaded data to {table_name} for partitions {partition_values}") 
 
     def _write_metrics(self, valid_count: int, rejected_count: int, rejected_ratio: float) -> None:
         metrics_df = self.spark.createDataFrame(
@@ -244,12 +280,35 @@ class NYC_Taxi_Silver_Loader:
             schema="run_id STRING, target_table STRING, valid_count LONG, rejected_count LONG, rejected_ratio DOUBLE"
         ).withColumn("created_at", F.current_timestamp())
 
-        metrics_df.write.format("delta").mode("append").saveAsTable(self.audit_table)
+        (
+            metrics_df.write
+            .format("delta")
+            .mode("append")
+            .saveAsTable(self.audit_table)   
+        )   
 
-    def _validate_schema(self, bronze_df: DataFrame) -> None: 
-        missing_cols = set(self.EXPECTED_BRONZE_COLS) - set(bronze_df.columns)
-        if missing_cols: 
-            raise ValueError(f"CRITICAL ERROR: Missing columns: {missing_cols}")
+    def _ensure_schema(self, bronze_df: DataFrame) -> DataFrame:
+
+        normalized_df = bronze_df
+
+        for col_name, meta in self.BRONZE_SCHEMA.items():
+
+            col_type = meta["type"]
+            required = meta["required"]
+
+            if col_name not in normalized_df.columns:
+
+                if required:
+                    raise ValueError(
+                        f"Missing required column: {col_name}"
+                    )
+
+                normalized_df = normalized_df.withColumn(
+                    col_name,
+                    F.lit(None).cast(col_type)
+                )
+
+        return normalized_df
         
 
 
