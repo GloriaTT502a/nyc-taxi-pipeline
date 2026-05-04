@@ -7,7 +7,7 @@ import uuid
 from pyspark.sql.utils import AnalysisException 
 import logging 
 import re
-from config import PipelineConfig 
+from src.config import PipelineConfig 
 
 class NYC_Taxi_Silver_Loader:
     """
