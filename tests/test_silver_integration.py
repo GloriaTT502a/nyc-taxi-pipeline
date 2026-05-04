@@ -8,7 +8,7 @@ class TestSilverIntegration:
 
     def test_full_pipeline_and_partition_overwrite(self, spark):
 
-        spark.sql("CREATE SCHEMA IF NOT EXISTS nyc.process_silver") 
+        #spark.sql("CREATE SCHEMA IF NOT EXISTS nyc.process_silver") 
 
         # ==========================================================
         # 1. 彻底抛弃本地路径，使用 UC 托管表名 (完美避开 /tmp 报错)
