@@ -14,5 +14,5 @@ jobs:
         python-version: "3.10"
     - run: |
         python -m pip install --upgrade pip
-        pip install pyspark pytest
+        pip install pyspark pytest chispa
     - run: PYTHONPATH=. PYTHONDONTWRITEBYTECODE=1 python -m pytest tests/ -v -p no:cacheprovider
