@@ -23,7 +23,7 @@ class NYC_Taxi_Silver_Loader:
         spark, 
         run_id: str, 
         target_table: str, 
-        audit_table: str = "nyc.process_silver.pipeline_metrics", 
+        audit_table: str = "process_silver.pipeline_metrics", 
         checkpoint_schema: str = None,
         ):
         self.spark = spark
