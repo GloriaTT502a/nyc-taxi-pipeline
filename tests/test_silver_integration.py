@@ -2,8 +2,8 @@ import pytest
 import uuid
 import datetime
 import pyspark.sql.functions as F
-from src.nyc_taxi_silver import NYC_Taxi_Silver_Loader
-from src.config import PipelineConfig
+from nyc_taxi_pipeline.nyc_taxi_silver import NYC_Taxi_Silver_Loader
+from nyc_taxi_pipeline.config.settings import PipelineConfig
 
 class TestSilverIntegration:
 
@@ -19,8 +19,8 @@ class TestSilverIntegration:
         test_suffix = uuid.uuid4().hex[:6]
         
         # 这里就是传给 Loader 的 target_table！绝对没有任何 /tmp/ 路径！
-        target_table = PipelineConfig.get_table_path(f"target_silver_test_{test_suffix}")
-        audit_table = PipelineConfig.get_table_path(f"audit_metrics_test_{test_suffix}")
+        target_table = PipelineConfig.get_table_path(f"target_silver_test_{test_suffix}", PipelineConfig.DATABASE)
+        audit_table = PipelineConfig.get_table_path(f"audit_metrics_test_{test_suffix}", PipelineConfig.DATABASE)
 
         #spark.conf.set("spark.sql.sources.partitionOverwriteMode", "dynamic")
 
