@@ -12,7 +12,7 @@ class TestSilverIntegration:
         PipelineConfig.CATALOG = ""  # 本地测试强制设空，规避多层级报错
         PipelineConfig.DATABASE["silver"] = "process_silver"
 
-        spark.sql(f"CREATE DATABASE IF NOT EXISTS {PipelineConfig.DATABASE["silver"]}")
+        spark.sql(f"CREATE DATABASE IF NOT EXISTS {PipelineConfig.DATABASE['silver']}")
         # ==========================================================
         # 1. 彻底抛弃本地路径，使用 UC 托管表名 (完美避开 /tmp 报错)
         # ==========================================================
