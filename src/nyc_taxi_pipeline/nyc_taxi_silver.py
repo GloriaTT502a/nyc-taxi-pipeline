@@ -28,8 +28,8 @@ class NYC_Taxi_Silver_Loader:
         checkpoint_schema: str = None,
         ):
         self.spark = spark
-        self.target_table = target_table or PipelineConfig.get_table_path("target_silver")
-        self.audit_table = audit_table or PipelineConfig.get_table_path("pipeline_metrics")
+        self.target_table = target_table or PipelineConfig.get_table_path("target_silver"， PipelineConfig.DATABASE)
+        self.audit_table = audit_table or PipelineConfig.get_table_path("pipeline_metrics", PipelineConfig.DATABASE)
         
         self.quarantine_table = f"{self.target_table}_quarantine"
         self.run_id = run_id
