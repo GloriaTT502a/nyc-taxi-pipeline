@@ -7,13 +7,23 @@ class PipelineConfig:
     # 本地/GitHub Actions 上不设置该变量（默认为空）
     CATALOG = os.getenv("ENV_CATALOG", "") 
 
+    DATABASES = {
+        "bronze": os.getenv("ENV_BRONZE_DB", "process_bronze"),
+        "silver": os.getenv("ENV_SILVER_DB", "process_silver"),
+        "gold":   os.getenv("ENV_GOLD_DB", "process_gold")
+    }
+
     @classmethod
-    def get_table_path(cls, table_name: str, default_db: str) -> str:
+    def get_table_path(cls, table_name: str, layer: str) -> str:
         """
         核心智能路由：自动适配两层或三层命名空间
         """
-        database = os.getenv("ENV_DATABASE", default_db) 
 
+        database = cls.DATABASES.get(layer)
+
+        if not database:
+            raise ValueError(f"Invalid layer: {layer}. Must be bronze, silver, or gold.") 
+        
         if cls.CATALOG:
             # Databricks 环境 -> catalog.schema.table
             return f"{cls.CATALOG}.{database}.{table_name}"
@@ -30,10 +40,10 @@ class PipelineConfig:
 BASE_PATH = os.getenv("ENV_BASE_PATH", "/Volumes/nyc/default/")
 
 # Dynamically generated Bronze table name (default database is process_bronze)
-BRONZE_TABLE = PipelineConfig.get_table_path("brz_yellow_nyc_taxi", default_db="process_bronze")
+BRONZE_TABLE = PipelineConfig.get_table_path("brz_yellow_nyc_taxi", layer="bronze")
 
 # Dynamically generated Silver table name (default database is process_silver)
-SILVER_TABLE = PipelineConfig.get_table_path("slv_yellow_nyc_taxi", default_db="process_silver")
+SILVER_TABLE = PipelineConfig.get_table_path("slv_yellow_nyc_taxi", layer="silver")
 
 # System-level metadata column names
 RUN_ID_COLUMN = "_run_id"
