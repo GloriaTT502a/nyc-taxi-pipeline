@@ -7,11 +7,11 @@ from pyspark.sql import functions as F
 
 # 🌟 修复 1: 严格遵照扁平化路径，去掉 src. 前缀
 # (CANONICAL_SCHEMA 如果在你别的模块，请相应调整导入路径，比如 from bronze.schema import CANONICAL_SCHEMA)
-from bronze.loader import TaxiBronzeLoader 
-from bronze.transformations import normalize_dataframe
+from nyc_taxi_pipeline.bronze.loader import TaxiBronzeLoader 
+from nyc_taxi_pipeline.bronze.transformations import normalize_dataframe
 # 假设 CANONICAL_SCHEMA 也在 loader 里，如果不是请修改
-from bronze.schema import CANONICAL_SCHEMA 
-from config.settings import LINEAGE_COLUMN, RUN_ID_COLUMN
+from nyc_taxi_pipeline.bronze.schema import CANONICAL_SCHEMA 
+from nyc_taxi_pipeline.config.settings import LINEAGE_COLUMN, RUN_ID_COLUMN
 
 
 class TestBronzeUnitLogic:

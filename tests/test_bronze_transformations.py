@@ -1,6 +1,6 @@
 # tests/test_transformations.py
 
-from bronze.transformations import (
+from nyc_taxi_pipeline.bronze.transformations import (
     normalize_dataframe
 )
 

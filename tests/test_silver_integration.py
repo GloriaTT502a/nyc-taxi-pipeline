@@ -2,8 +2,8 @@ import pytest
 import uuid
 import datetime
 import pyspark.sql.functions as F
-from src.nyc_taxi_silver import NYC_Taxi_Silver_Loader
-from src.config import PipelineConfig
+from nyc_taxi_pipeline.nyc_taxi_silver import NYC_Taxi_Silver_Loader
+from nyc_taxi_pipeline.config.settings import PipelineConfig
 
 class TestSilverIntegration:
 

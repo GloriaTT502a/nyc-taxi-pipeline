@@ -2,7 +2,7 @@ import pytest
 import pyspark.sql.functions as F
 from pyspark.sql.types import StructType, StructField, StringType, DoubleType, IntegerType, BooleanType, TimestampType
 from chispa.dataframe_comparer import assert_df_equality
-from src.nyc_taxi_silver import NYC_Taxi_Silver_Loader
+from nyc_taxi_pipeline.nyc_taxi_silver import NYC_Taxi_Silver_Loader
 import datetime
 
 class TestSilverUnitLogic:
