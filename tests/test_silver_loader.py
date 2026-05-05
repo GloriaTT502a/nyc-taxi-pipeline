@@ -3,7 +3,7 @@ from pyspark.sql.types import *
 from datetime import datetime
 import pyspark.sql.functions as F
 
-from nyc_taxi_pipeline.nyc_taxi_silver import NYC_Taxi_Silver_Loader
+from nyc_taxi_pipeline.silver.nyc_taxi_silver import NYC_Taxi_Silver_Loader
 
 import os
 import pytest
