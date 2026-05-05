@@ -6,10 +6,10 @@ from dateutil.relativedelta import relativedelta
 from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql import functions as F
 
-from config.settings import BASE_PATH, BRONZE_TABLE, LINEAGE_COLUMN, RUN_ID_COLUMN
-from common.logger import get_logger
-from models.dq_result import DQResult
-from bronze.transformations import normalize_dataframe
+from nyc_taxi_pipeline.config.settings import BASE_PATH, BRONZE_TABLE, LINEAGE_COLUMN, RUN_ID_COLUMN
+from nyc_taxi_pipeline.common.logger import get_logger
+from nyc_taxi_pipeline.models.dq_result import DQResult
+from nyc_taxi_pipeline.bronze.transformations import normalize_dataframe
 
 # Get current Logger
 logger = get_logger(__name__)

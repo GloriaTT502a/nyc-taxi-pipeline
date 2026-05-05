@@ -2,7 +2,7 @@ from pyspark.sql import DataFrame
 from pyspark.sql import functions as F
 
 # import target table schema and rename map 
-from bronze.schema import CANONICAL_SCHEMA, RENAME_MAP
+from nyc_taxi_pipeline.bronze.schema import CANONICAL_SCHEMA, RENAME_MAP
 
 def normalize_dataframe(
     df: DataFrame,
