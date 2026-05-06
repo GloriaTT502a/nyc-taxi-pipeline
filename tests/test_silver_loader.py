@@ -7,6 +7,8 @@ from nyc_taxi_pipeline.silver.nyc_taxi_silver import NYC_Taxi_Silver_Loader
 
 import os
 import pytest
+from unittest.mock import patch
+
 
 @pytest.fixture(scope="session")
 def spark():
@@ -44,7 +46,8 @@ def spark():
             .appName("unit-tests") \
             .getOrCreate()
 
-def test_all_dq_rules(spark):
+@patch("databricks.sdk.WorkspaceClient")
+def test_all_dq_rules(mock_client):
     """工业级全覆盖测试矩阵：测试所有边界条件和 DQ 规则"""
     
     schema = StructType([

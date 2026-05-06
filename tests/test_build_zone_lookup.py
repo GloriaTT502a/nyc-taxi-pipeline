@@ -39,7 +39,7 @@ def test_process_spatial_to_h3(mock_geodataframe):
 
 # 3. Testing Spark I/O (Integration Testing)
 @patch("nyc_taxi_pipeline.spatial.build_zone_lookup.gpd.read_file")
-def test_build_dim_taxi_zone_h3(mock_read_file, mock_geodataframe, spark_session):
+def test_build_dim_taxi_zone_h3(mock_read_file, mock_geodataframe, spark):
     """
     `spark_session` is the global pytest fixture defined in your `conftest.py` file.
     """
