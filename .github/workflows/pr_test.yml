@@ -28,14 +28,16 @@ jobs:
         cache: 'pip'
 
     - name: Install System Spatial Dependencies
-      # 使用 DEBIAN_FRONTEND=noninteractive 防止安装挂起
-      # 添加 ubuntugis ppa 以获得更快的二进制安装
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
-        sudo add-apt-repository ppa:ubuntugis/ppa -y
         sudo apt-get update
-        sudo apt-get install -y libgdal-dev libgeos-dev libproj-dev gdal-bin --no-install-recommends
+        sudo apt-get install -y \
+          gdal-bin \
+          libgdal-dev \
+          libgeos-dev \
+          libproj-dev \
+          --no-install-recommends
 
     - name: Install dependencies
       run: |
