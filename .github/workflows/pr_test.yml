@@ -28,9 +28,14 @@ jobs:
         cache: 'pip'
 
     - name: Install System Spatial Dependencies
+      # 使用 DEBIAN_FRONTEND=noninteractive 防止安装挂起
+      # 添加 ubuntugis ppa 以获得更快的二进制安装
+      env:
+        DEBIAN_FRONTEND: noninteractive
       run: |
+        sudo add-apt-repository ppa:ubuntugis/ppa -y
         sudo apt-get update
-        sudo apt-get install -y libgdal-dev libgeos-dev libproj-dev
+        sudo apt-get install -y libgdal-dev libgeos-dev libproj-dev gdal-bin --no-install-recommends
 
     - name: Install dependencies
       run: |
@@ -39,5 +44,8 @@ jobs:
         pip install -e .
 
     - name: Run Pytest
+      env:
+        DATABRICKS_HOST: https://fake-host.cloud.databricks.com
+        DATABRICKS_TOKEN: dapi-fake-token-123
       run: |
         python -m pytest tests/ -v -p no:cacheprovider

@@ -1,5 +1,14 @@
 import pytest
 from pyspark.sql import SparkSession
+import sys
+from unittest.mock import MagicMock
+
+mock_db = MagicMock()
+# 让 WorkspaceClient() 调用返回自身，且不触发认证自检
+mock_db.WorkspaceClient.return_value = mock_db
+sys.modules["databricks"] = mock_db
+sys.modules["databricks.sdk"] = mock_db
+sys.modules["databricks.sdk.core"] = mock_db
 
 @pytest.fixture(scope="session")
 def spark():
@@ -23,7 +32,11 @@ def spark():
                 # Maven 包下载坐标 (根据你的 PySpark 版本调整)
                 .config("spark.jars.packages", "io.delta:delta-spark_2.12:3.1.0")
                 .getOrCreate())
-        
+
+@pytest.fixture(scope="session")
+def spark(spark_session):
+    return spark_session 
+    
 @pytest.fixture
 def mock_silver_path(tmp_path):
     """
