@@ -52,7 +52,7 @@ def test_build_dim_taxi_zone_h3(mock_read_file, mock_geodataframe, spark):
         mock_create_df.return_value = mock_df
         
         # Run the main function
-        build_dim_taxi_zone_h3(spark_session, "dummy/path.shp", "test_schema.test_table")
+        build_dim_taxi_zone_h3(spark, "dummy/path.shp", "test_schema.test_table")
         
         # Assertion: Verify whether the method for saving the Delta table was called correctly.
         mock_read_file.assert_called_once_with("dummy/path.shp")
