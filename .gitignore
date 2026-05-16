@@ -1,0 +1,25 @@
+.venv/
+dbt_transform/target/
+dbt_transform/dbt_packages/
+.dbt
+.databricks
+
+.databricks
+.pytest_cache/
+.poetry/
+__pycache__/
+*.pyc
+.databrickscfg
+
+# Python Build Artifacts
+*.egg-info/
+typings/
+
+# Secrets & Env
+.env
+.databrickscfg
+
+# Local IDE & Logs
+.vscode/
+logs/
+
