@@ -42,8 +42,6 @@ def get_spark_session(app_name="nyc-taxi-pipeline"):
                 SparkSession.builder
                     .master("local[*]")  
                     .appName(f"{app_name}-local-testing")
-                    # 强行覆盖远端配置
-                    .config("spark.remote", "false")
                     .config("spark.sql.execution.arrow.pyspark.enabled", "false")
                     .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
                     .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog")
