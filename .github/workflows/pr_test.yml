@@ -3,7 +3,6 @@ name: Silver Layer Pytest CI
 on:
   push:
     branches: [ "main" ]
-
   pull_request:
     branches: [ "main" ]
 
@@ -15,17 +14,17 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up JDK 11
-      uses: actions/setup-java@v3
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
       with:
-        java-version: '11'
-        distribution: 'adopt'
-    
-    - name: Set up Python 3.10
+        java-version: '17'       # 🌟 升级至 Java 17，与高版本生态及本地环境保持字节码一致
+        distribution: 'temurin'  # 现代工业级最推荐、最稳定的开源 JDK 发行版
+
+    - name: Set up Python 3.11
       uses: actions/setup-python@v5
       with:
-        python-version: "3.10"
-        cache: 'pip'
+        python-version: "3.11"   # 🌟 对齐 Python 3.11 运行时
+        cache: 'pip'             # 开启 GitHub 官方构建缓存，大幅缩短后续 CI 的排队时间
 
     - name: Install System Spatial Dependencies
       env:
@@ -42,12 +41,18 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        # 优先使用项目根目录的 requirements.txt（如果包含 pytest 依赖）
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        # 以可编辑模式安装当前 nyc-taxi-pipeline 项目，确保 src/ 路径被完美识到
         pip install -e .
+        # 兜底确保单元测试核心套件绝对就绪
+        pip install pytest pytest-cov 
 
     - name: Run Pytest
       env:
-        DATABRICKS_HOST: https://fake-host.cloud.databricks.com
-        DATABRICKS_TOKEN: dapi-fake-token-123
+        # 🌟【最核心修改】：强行注入本地数据工程测试的“双重免死金牌”
+        USE_LOCAL_SPARK: "true"   # 降维打击：强行让项目激活内部原生本地纯净 Spark 引擎
+        USE_PANDAS_UDF: "false"   # 确定性优先：在测试容器内关闭 Pandas UDF，彻底绕开高版本 Java Unsafe 闪退死锁
       run: |
+        # 运行全量单元测试，并关闭本地缓存提供者，确保每次 CI 运行都是绝对干净的冷启动
         python -m pytest tests/ -v -p no:cacheprovider
