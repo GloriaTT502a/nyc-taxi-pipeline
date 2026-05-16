@@ -47,6 +47,10 @@ jobs:
         pip install -e .
         # 兜底确保单元测试核心套件绝对就绪
         pip install pytest pytest-cov 
+        
+        echo "🧹 强制清洗 CI 环境，驱逐潜伏的 databricks-connect 与 sdk..."
+        pip uninstall -y databricks-connect || true
+        pip uninstall -y databricks-sdk || true
 
     - name: Run Pytest
       env:
