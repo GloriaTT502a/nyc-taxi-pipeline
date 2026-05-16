@@ -10,7 +10,12 @@ requires-python = ">=3.10"
 
 dependencies = [
     "pyspark>=3.5.0,<3.6.0",               
-    "delta-spark==3.1.0"  
+    "delta-spark==3.1.0", 
+    "pandas",             # 解决 No module named 'pandas'
+    "pyyaml",             # 解决 No module named 'yaml'
+    "python-dateutil",    # 解决 No module named 'dateutil'
+    "geopandas",          # 解决 No module named 'geopandas'
+    "h3"                  # H3 空间缝合计算必需  
 ]
 
 # 工业级 Best Practice：将本地调试和测试工具归为“开发专属配置”
