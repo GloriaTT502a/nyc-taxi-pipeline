@@ -1,0 +1,4 @@
+-r base.txt
+pytest
+chispa
+pytest-cov>=4.1.0
