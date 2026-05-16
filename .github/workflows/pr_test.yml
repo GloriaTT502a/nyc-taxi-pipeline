@@ -50,9 +50,13 @@ jobs:
 
     - name: Run Pytest
       env:
-        # 🌟【最核心修改】：强行注入本地数据工程测试的“双重免死金牌”
+        # 1. 🌟 强行注入本地数据工程测试的“双重免死金牌”
         USE_LOCAL_SPARK: "true"   # 降维打击：强行让项目激活内部原生本地纯净 Spark 引擎
         USE_PANDAS_UDF: "false"   # 确定性优先：在测试容器内关闭 Pandas UDF，彻底绕开高版本 Java Unsafe 闪退死锁
+        
+        # 2. 🌟【本次修复核心】：注入 Mock 凭证，彻底致盲 Databricks SDK 的云端联调探测机制
+        DATABRICKS_HOST: "https://local-isolated-testing.cloud.databricks.com"
+        DATABRICKS_TOKEN: "dapi_mock_token_for_ci_isolation_1234567890_absolute_security"
       run: |
         # 运行全量单元测试，并关闭本地缓存提供者，确保每次 CI 运行都是绝对干净的冷启动
         python -m pytest tests/ -v -p no:cacheprovider
