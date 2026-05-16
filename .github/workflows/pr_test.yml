@@ -42,7 +42,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         # 优先使用项目根目录的 requirements.txt（如果包含 pytest 依赖）
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        pip install -r requirements/dev.txt
         # 以可编辑模式安装当前 nyc-taxi-pipeline 项目，确保 src/ 路径被完美识到
         pip install -e .
         # 兜底确保单元测试核心套件绝对就绪
