@@ -12,7 +12,7 @@ def get_spark_session(app_name="nyc-taxi-pipeline"):
     try: 
         from databricks.sdk.runtime import spark 
         if spark is not None:
-            logger.info("✅ 检测到云端 Databricks 运行时，接管内置 SparkSession。") 
+            logger.info("检测到云端 Databricks 运行时，接管内置 SparkSession。") 
             return spark 
     except ImportError: 
         pass 
@@ -22,7 +22,7 @@ def get_spark_session(app_name="nyc-taxi-pipeline"):
     use_local_spark = os.environ.get("USE_LOCAL_SPARK", "false").lower() == "true"
 
     if is_ci or use_local_spark: 
-        logger.info("🚀 启动纯本地原生 PySpark 引擎 (已建立物理隔离屏障)...")
+        logger.info("启动纯本地原生 PySpark 引擎 (已建立物理隔离屏障)...")
         
         os.environ.pop("SPARK_REMOTE", None)
         os.environ.pop("DATABRICKS_RUNTIME_VERSION", None)
@@ -42,6 +42,9 @@ def get_spark_session(app_name="nyc-taxi-pipeline"):
                 SparkSession.builder
                     .master("local[*]")  
                     .appName(f"{app_name}-local-testing")
+                    # 🌟 核心修复：强制本地表默认格式为 delta，彻底解决本地物理表或临时表不支持高级操作的问题
+                    .config("spark.sql.sources.default", "delta")
+                    
                     .config("spark.sql.execution.arrow.pyspark.enabled", "false")
                     .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
                     .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog")
@@ -53,13 +56,13 @@ def get_spark_session(app_name="nyc-taxi-pipeline"):
                     .getOrCreate()
             )
         except Exception as e:
-            logger.error(f"❌ 本地 PySpark 启动失败: {e}")
+            logger.error(f"本地 PySpark 启动失败: {e}")
             raise e
 
 # ==========================================
     # 场景 3：本地开发机连 Databricks 远程集群 (Remote Debugging)
     # ==========================================
-    logger.info("🌐 尝试通过 Databricks Connect 桥接云端远程集群...")
+    logger.info("尝试通过 Databricks Connect 桥接云端远程集群...")
     try:
         from databricks.connect import DatabricksSession
         return (
@@ -69,9 +72,9 @@ def get_spark_session(app_name="nyc-taxi-pipeline"):
         )
     except ImportError:
         error_msg = (
-            "❌ 无法路由到有效的 Spark 计算环境！\n"
-            "👉 如果你想跑本地快速测试，请在终端执行: export USE_LOCAL_SPARK=true\n"
-            "👉 如果你想连云端集群做集成联调，请先执行: pip install -r requirements/databricks.txt"
+            "无法路由到有效的 Spark 计算环境！\n"
+            "如果你想跑本地快速测试，请在终端执行: export USE_LOCAL_SPARK=true\n"
+            "如果你想连云端集群做集成联调，请先执行: pip install -r requirements/databricks.txt"
         )
         logger.error(error_msg)
         raise RuntimeError(error_msg)

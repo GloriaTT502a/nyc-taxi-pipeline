@@ -31,7 +31,8 @@ dev = [
 test = [
     "pytest>=7.0.0",
     "pytest-cov",
-    "chispa"
+    "chispa", 
+    "databricks-sdk" 
 ]
 
 [tool.pytest.ini_options]
