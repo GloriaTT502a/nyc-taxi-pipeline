@@ -1,0 +1,5 @@
+-r dev.txt
+dbt-core>=1.7.0
+dbt-databricks>=1.7.0
+# 如果以后你本地开发要用 databricks-connect 连云端，可以安全地写在这里：
+# databricks-connect==14.3.*

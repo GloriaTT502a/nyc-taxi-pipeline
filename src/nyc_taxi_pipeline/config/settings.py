@@ -48,3 +48,7 @@ SILVER_TABLE = PipelineConfig.get_table_path("slv_yellow_nyc_taxi", layer="silve
 # System-level metadata column names
 RUN_ID_COLUMN = "_run_id"
 LINEAGE_COLUMN = "_input_file"
+
+# Used in H3 enrichment
+H3_RESOLUTION = int(os.getenv("ENV_H3_RESOLUTION", 8)) 
+

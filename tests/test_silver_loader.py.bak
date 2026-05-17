@@ -8,6 +8,8 @@ from nyc_taxi_pipeline.silver.nyc_taxi_silver import (
     NYC_Taxi_Silver_Loader
 )
 
+pytestmark = pytest.mark.skip(reason="Legacy Silver pipeline loader is deprecated and suspended.")
+
 
 @patch("databricks.sdk.WorkspaceClient")
 def test_all_dq_rules(mock_client, spark):

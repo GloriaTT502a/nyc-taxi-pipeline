@@ -5,7 +5,7 @@
 -- ==============================================================================
 
 -- 1. Make sure schema exists
-CREATE SCHEMA IF NOT EXISTS process_gold; 
+CREATE SCHEMA IF NOT EXISTS process_silver; 
 
 CREATE TABLE IF NOT EXISTS dim_taxi_zone_h3 (
     LocationID BIGINT COMMENT 'Taxi zone location ID',

@@ -1,0 +1,31 @@
+# src/nyc_taxi_pipeline/config/rules.yaml
+rules:
+  - name: missing_pickup
+    expr: "pickup_datetime IS NULL"
+  
+  - name: missing_dropoff
+    expr: "dropoff_datetime IS NULL"
+  
+  - name: dropoff_before_pickup
+    expr: "pickup_datetime IS NOT NULL AND dropoff_datetime IS NOT NULL AND dropoff_datetime < pickup_datetime"
+  
+  - name: passenger_count_invalid
+    expr: "passenger_count < 0 OR passenger_count > 9"
+  
+  - name: total_amount_negative
+    expr: "total_amount < 0"
+  
+  - name: invalid_YYYYMM
+    expr: "YYYYMM < 190001 OR YYYYMM > 300012"
+  
+  - name: duration_out_of_range
+    expr: "duration_min < 2.0 OR duration_min > 180"
+  
+  - name: distance_too_small
+    expr: "trip_distance <= 0.1"
+  
+  - name: efficiency_too_high
+    expr: "temp_eff >= 15.0"
+  
+  - name: fare_too_low
+    expr: "fare_amount <= 2.5"

@@ -1,91 +1,40 @@
+# tests/conftest.py
 import pytest
-from pyspark.sql import SparkSession
+import os
 import sys
-from unittest.mock import MagicMock
+import warnings 
+
+# 1. 动态注入 src 路径，确保 pytest 在任何目录下执行都能正确 import 项目模块
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
+
+# 从你刚刚强化好的通用工具类中导入获取 session 的方法
+from nyc_taxi_pipeline.utils.spark_utils import get_spark_session
 
 
-# ---------------------------------------------------
-# Mock Databricks SDK
-# 防止 CI 环境触发真实 Databricks 认证
-# ---------------------------------------------------
-
-mock_db = MagicMock()
-
-mock_db.WorkspaceClient.return_value = mock_db
-
-sys.modules["databricks"] = mock_db
-sys.modules["databricks.sdk"] = mock_db
-sys.modules["databricks.sdk.core"] = mock_db
-
-
-# ---------------------------------------------------
-# Spark Fixture
-# ---------------------------------------------------
-
-@pytest.fixture(scope="session")
-def spark():
+@pytest.fixture(scope="session") 
+def spark(): 
     """
-    Industrial-grade local Spark test session
-    for CI/CD and local development.
+    测试专用的全局共享 SparkSession。
+    职责解耦：完全托管给业务通用的 spark_utils 处理环境路由。
     """
+    # 2. 统一调用工具类获取最适合当前环境的 SparkSession
+    spark_session = get_spark_session(app_name="nyc-taxi-pipeline-pytest")
 
-    try:
-        # Databricks Runtime 环境
-        from pyspark.dbutils import DBUtils
+    yield spark_session 
 
-        spark = SparkSession.builder.getOrCreate()
-
-    except ImportError:
-        # Local / GitHub Actions 环境
-
-        spark = (
-            SparkSession.builder
-            .master("local[2]")
-            .appName("nyc-taxi-pipeline-tests")
-
-            # CI 稳定性优化
-            .config("spark.ui.enabled", "false")
-            .config("spark.sql.shuffle.partitions", "2")
-            .config("spark.default.parallelism", "2")
-
-            # Spark networking fix
-            .config("spark.driver.host", "127.0.0.1")
-
-            # Timezone consistency
-            .config("spark.sql.session.timeZone", "UTC")
-
-            # Delta Lake
-            .config(
-                "spark.sql.extensions",
-                "io.delta.sql.DeltaSparkSessionExtension"
-            )
-            .config(
-                "spark.sql.catalog.spark_catalog",
-                "org.apache.spark.sql.delta.catalog.DeltaCatalog"
-            )
-
-            # Delta package
-            .config(
-                "spark.jars.packages",
-                "io.delta:delta-spark_2.12:3.1.0"
-            )
-
-            .getOrCreate()
-        )
-
-    yield spark
-
-    spark.stop()
+    # 3. 无论哪种模式，测试结束后安全关闭 session 资源
+    
+    with warnings.catch_warnings(): 
+        warnings.simplefilter("ignore")
+        try: 
+            spark_session.stop() 
+        except Exception: 
+            pass 
 
 
-# ---------------------------------------------------
-# Temp path fixture
-# ---------------------------------------------------
-
-@pytest.fixture
-def mock_silver_path(tmp_path):
+@pytest.fixture 
+def mock_silver_path(tmp_path): 
     """
-    Temporary path for local silver-layer testing.
-    """
-
-    return str(tmp_path / "silver_table")
+    临时路径，用于本地 Silver 层测试（如隔离区写入或本地 Delta 落盘测试）。
+    """ 
+    return str(tmp_path / "silver_table") 

@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nyc_taxi_pipeline"
+version = "0.1.0"            
+description = "NYC Taxi Data Engineering Pipeline on Databricks"
+requires-python = ">=3.10"
+
+dependencies = [
+    "pyspark>=3.5.0,<3.6.0",               
+    "delta-spark==3.1.0", 
+    "pandas",             # 解决 No module named 'pandas'
+    "pyyaml",             # 解决 No module named 'yaml'
+    "python-dateutil",    # 解决 No module named 'dateutil'
+    "geopandas",          # 解决 No module named 'geopandas'
+    "h3"                  # H3 空间缝合计算必需  
+]
+
+# 工业级 Best Practice：将本地调试和测试工具归为“开发专属配置”
+[project.optional-dependencies]
+dev = [
+    "databricks-connect>=15.1.0,<16.0.0",
+    "pytest>=7.0.0",
+    "pytest-cov",
+    "chispa"
+]
+
+# 🌟 CI 纯净测试环境（只有测试包，绝对不含 databricks-connect）
+test = [
+    "pytest>=7.0.0",
+    "pytest-cov",
+    "chispa", 
+    "databricks-sdk" 
+]
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    # 解决问题 1: 屏蔽 Databricks Connect 释放句柄失败的非致命内部警告
+    "ignore:ReleaseExecute failed with exception:UserWarning:pyspark.sql.connect.client.reattach",
+    
+    # 解决问题 2: 屏蔽 PySpark 内部 120 多个 distutils 弃用警告（刷屏元凶）
+    "ignore:distutils Version classes are deprecated:DeprecationWarning:pyspark.sql.pandas.utils",
+    "ignore:distutils Version classes are deprecated:DeprecationWarning:pyspark.sql.connect.utils"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

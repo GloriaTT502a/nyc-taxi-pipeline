@@ -5,6 +5,8 @@ import pyspark.sql.functions as F
 from nyc_taxi_pipeline.silver.nyc_taxi_silver import NYC_Taxi_Silver_Loader
 from nyc_taxi_pipeline.config.settings import PipelineConfig
 
+pytestmark = pytest.mark.skip(reason="Legacy Silver pipeline loader is deprecated and suspended.")
+
 class TestSilverIntegration:
 
     def test_full_pipeline_and_partition_overwrite(self, spark):
