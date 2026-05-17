@@ -47,14 +47,18 @@ def get_spark_session(app_name="nyc-taxi-pipeline"):
                     .master("local[*]")  
                     .appName(f"{app_name}-local-testing")
                     
-                    # 🌟【核心依赖加载】：必须最先声明物理 Jar 包依赖
+                    # 🌟【最核心包注入】：必须最先声明 Delta 和 Ivy 的物理依赖
                     .config("spark.jars.packages", "io.delta:delta-spark_2.12:3.1.0")
                     
-                    # 🌟【事务级别对齐】：强制全局表格式、Catalog 目录和核心扩展完美对齐 DeltaLake 规范
-                    # 彻底解决本地临时表/托管表执行 .process() 时不支持 truncate/merge/delete 的断言异常
+                    # 🌟【工业级 Catalog 强力纠偏】：
+                    # 不仅声明 catalog 类，同时强制关闭本地非 Delta 的临时降级检测
                     .config("spark.sql.sources.default", "delta")
                     .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog")
                     .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
+                    
+                    # 🌟【追加补丁】：强制指示默认仓库创建时直接沿用 delta 行为，规避原生 Spark 的默认数据库 fallback
+                    .config("spark.sql.catalog.spark_catalog.defaultProvider", "delta")
+                    .config("spark.sql.warehouse.dir", "spark-warehouse")
                     
                     # 性能与兼容：关闭本地不稳固的 Arrow 内存直接读写，杜绝 Java 17+ 模块封装闪退
                     .config("spark.sql.execution.arrow.pyspark.enabled", "false")
