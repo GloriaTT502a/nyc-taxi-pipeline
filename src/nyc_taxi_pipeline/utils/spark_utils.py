@@ -44,6 +44,8 @@ def get_spark_session(app_name="nyc-taxi-pipeline"):
                     .appName(f"{app_name}-local-testing")
                     # 🌟 核心修复：强制本地表默认格式为 delta，彻底解决本地物理表或临时表不支持高级操作的问题
                     .config("spark.sql.sources.default", "delta")
+                    .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog")
+                    .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
                     
                     .config("spark.sql.execution.arrow.pyspark.enabled", "false")
                     .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
