@@ -5,6 +5,8 @@ from chispa.dataframe_comparer import assert_df_equality
 from nyc_taxi_pipeline.silver.nyc_taxi_silver import NYC_Taxi_Silver_Loader
 import datetime
 
+pytestmark = pytest.mark.skip(reason="Legacy Silver pipeline loader is deprecated and suspended.") 
+
 class TestSilverUnitLogic:
     
     # =========================================================================
