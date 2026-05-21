@@ -1,19 +1,55 @@
-# This is a Databricks asset bundle definition for nyc-taxi-pipeline.
-# The Databricks extension requires databricks.yml configuration file.
-# See https://docs.databricks.com/dev-tools/bundles/index.html for documentation.
-
 bundle:
   name: nyc-taxi-pipeline
+
+sync:
+  include:
+    - src/**
+
+  exclude:
+    - .venv/**
+    - .pytest_cache/**
+    - .git/**
+    - .github/**
+    - tests/**
+    - __pycache__/**
+    - "*.db"
+    - "*.pyc"
+    - spark-warehouse/**
+    - .snapshots/**
+
+resources:
+  jobs:
+    run_silver_pipeline:
+      name: "[${bundle.target}] NYC Taxi Silver Run"
+
+      environments:
+        - environment_key: default
+
+          spec:
+            environment_version: "3"
+
+            dependencies:
+              - ./dist/*.whl
+
+      tasks:
+        - task_key: silver_processing
+
+          environment_key: default
+
+          python_wheel_task:
+            package_name: nyc_taxi_pipeline
+            entry_point: run_silver
 
 targets:
   dev:
     mode: development
     default: true
+
     workspace:
       host: https://dbc-f9d1ed70-8f10.cloud.databricks.com
 
-  ## Optionally, there could be 'staging' or 'prod' targets here.
-  #
-  # prod:
-  #   workspace:
-  #     host: https://dbc-f9d1ed70-8f10.cloud.databricks.com
+  prod:
+    mode: production
+
+    workspace:
+      host: https://dbc-f9d1ed70-8f10.cloud.databricks.com 

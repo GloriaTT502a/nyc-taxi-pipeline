@@ -24,7 +24,6 @@ class SilverDeltaWriter:
                 df.write
                     .format("delta") 
                     .mode("overwrite") 
-                    .option("overwriteSchema") 
                     .partitionBy(partition_col)
                     .saveAsTable(table_name)
             )
