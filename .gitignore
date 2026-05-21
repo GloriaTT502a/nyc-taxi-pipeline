@@ -23,3 +23,24 @@ typings/
 .vscode/
 logs/
 
+
+# Python 编译与分发产物
+build/
+dist/
+*.egg-info/
+__pycache__/
+*.pyc
+
+# 备份与临时文件
+*.bak
+*.swp
+*.tmp
+
+# Pytest 与本地 Spark 运行时产生的缓存及日志
+.pytest_cache/
+.coverage
+htmlcov/
+spark-warehouse/
+metastore_db/
+derby.log
+EOF

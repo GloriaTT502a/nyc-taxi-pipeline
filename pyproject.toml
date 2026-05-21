@@ -15,8 +15,12 @@ dependencies = [
     "pyyaml",             # 解决 No module named 'yaml'
     "python-dateutil",    # 解决 No module named 'dateutil'
     "geopandas",          # 解决 No module named 'geopandas'
-    "h3"                  # H3 空间缝合计算必需  
+    "h3>=3.7.0"                  # H3 空间缝合计算必需  
 ]
+
+[project.scripts]
+# 🌟 这行非常重要！它把 run_silver.py 定义为了一个可以被调用的入口
+run_silver = "nyc_taxi_pipeline.run_silver:main"
 
 # 工业级 Best Practice：将本地调试和测试工具归为“开发专属配置”
 [project.optional-dependencies]
@@ -47,3 +51,7 @@ filterwarnings = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+"nyc_taxi_pipeline.config" = ["*.yaml", "*.yml"]
+
