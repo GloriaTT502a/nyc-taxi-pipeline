@@ -1,0 +1,40 @@
+version: 2
+
+sources:
+  - name: databricks_ingest
+    description: "Silver Layer in Data Lake. Loaded from delta table manipulated by Pyspark task. " 
+    catalog: nyc
+    schema: process_silver       
+    
+    config: 
+      loaded_at_field: meta_silver_processed_at
+      freshness:
+        warn_after: {count: 12, period: hour}
+        error_after: {count: 24, period: hour}
+
+    tables:                    
+      - name: yellow_trips
+        identifier: slv_yellow_nyc_taxi # 👈 必须比 - name 往里多缩进 2 个空格！告诉 dbt 真实的物理表名
+        description: "Raw data of yellow taxi"
+
+        # The column used to identify freshness 
+        config: 
+          loaded_at_field: meta_silver_processed_at 
+        
+        columns:
+          - name: trip_key
+            tests:
+              - unique
+              - not_null
+
+          - name: pickup_datetime 
+            tests: 
+              - not_null
+
+          - name: vendor_id 
+            tests: 
+              - accepted_values:
+                  arguments: 
+                    values: ['1', '2' , 'CMT', 'VTS', 'DDS'] 
+                  config: 
+                    severity: warn

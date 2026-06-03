@@ -1,4 +1,4 @@
-name: Silver Layer Pytest CI
+name: Data Pipeline CI (PySpark & dbt)
 
 on:
   push:
@@ -44,7 +44,7 @@ jobs:
         # 工业级优雅安装：只需一行！
         # 这会自动安装 pyspark, delta-spark (核心)，以及 pytest, chispa (测试包)
         # 它绝对不会碰 databricks-connect，所以连卸载的步骤都省了！
-        pip install -e ".[test]" 
+        pip install -e ".[test]" dbt-databricks sqlfluff 
 
 
     - name: Run Pytest
@@ -59,3 +59,28 @@ jobs:
       run: |
         # 运行全量单元测试，并关闭本地缓存提供者，确保每次 CI 运行都是绝对干净的冷启动
         python -m pytest tests/ -v -p no:cacheprovider
+
+    # ==========================================
+    # 第二防线：dbt 逻辑与集成测试
+    # ==========================================
+    - name: Install dbt Dependencies
+      working-directory: ./dbt_transform  # 🌟 切换到你的 dbt 项目根目录
+      run: |
+        dbt deps
+
+    - name: Run dbt Unit Tests (Local)
+      working-directory: ./dbt_transform
+      run: |
+        # 🌟 单元测试不查底层数据，速度极快
+        dbt test --select "test_type:unit"
+
+    - name: Run dbt Build (Connect to Databricks)
+      working-directory: ./dbt_transform
+      env:
+        # 🌟 注入 GitHub Secrets 中的【真实】凭证供 dbt 连库测试
+        DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+        DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+      run: |
+        # 如果你配置了 CI 专用的 target，可以在这里加上 -t ci
+        # 这里为了演示先跑全量，生产环境中推荐替换为 dbt build --select "state:modified+"
+        dbt build

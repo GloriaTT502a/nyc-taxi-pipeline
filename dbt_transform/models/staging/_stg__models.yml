@@ -1,0 +1,154 @@
+version: 2 
+               
+models: 
+  - name: stg_nyc_taxi__yellow_trips 
+    description: "Staging layer: rename column name "
+    
+    # make sure the count of staging table equal to source table 
+    tests: 
+      - dbt_expectations.expect_table_row_count_to_equal_other_table: 
+          arguments: 
+            compare_model: source('databricks_ingest', 'yellow_trips') 
+          config: 
+            severity: error 
+
+      - dbt_expectations.expect_column_pair_values_A_to_be_greater_than_B: 
+          arguments: 
+            column_A: dropoff_at 
+            column_B: pickup_at 
+            or_equal: true 
+          config: 
+            severity: error 
+
+    columns:
+      # 1. Primary key tests 
+      - name: trip_id 
+        description: "surrogate key generated for each trip"
+        tests: 
+          - unique 
+          - not_null 
+
+      # 2. Raw Audit Column Tests 
+      - name: raw_payment_type 
+        description: "audit trail for original payment type string"
+        tests: 
+          - dbt_expectations.expect_column_unique_value_count_to_be_between: 
+              arguments: 
+                min_value: 1 
+                max_value: 50 
+              config: 
+                severity: warn
+
+      - name: raw_store_and_fwd_flag 
+        description: "audit trail for original store and fwd flag"
+        tests: 
+          - dbt_expectations.expect_column_unique_value_count_to_be_between: 
+              arguments: 
+                min_value: 1 
+                max_value: 30 
+
+      - name: payment_type 
+        description: "standardized payment code (1-6, 5=unknown)"
+        tests: 
+          - accepted_values:
+              arguments: 
+                values: [1, 2, 3, 4, 5, 6]
+              config: 
+                severity: error 
+
+      - name: has_store_and_fwd 
+        description: "boolean flag for store and forward"
+        tests: 
+          - dbt_expectations.expect_column_values_to_be_in_type_list:
+              arguments: 
+                column_type_list: ['boolean'] 
+
+      - name: trip_distance_miles 
+        description: "trip distance in miles" 
+        tests: 
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments: 
+                min_value: 0
+              config:
+                severity: error 
+
+      - name: passenger_count 
+        tests: 
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments: 
+                min_value: 0
+                max_value: 8 # Unreasonable if more then 10 passengers 
+              config:
+                severity: warn
+
+      # make sure data clean logic in pyspark is correct 
+      - name: pickup_at 
+        tests: 
+          - not_null:  
+              config: 
+                severity: error 
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments: 
+                min_value: cast('2009-01-01' as timestamp) # TLC 数据最早年份
+                max_value: cast('2030-01-01' as timestamp)
+      
+      - name: dropoff_at 
+        tests:
+          - not_null 
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments: 
+                min_value: cast('2009-01-01' as timestamp) # TLC 数据最早年份
+                max_value: cast('2030-01-01' as timestamp)
+
+      - name: total_amount 
+        tests: 
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments: 
+                min_value: 0 
+
+      - name: trip_duration_minutes
+        tests:
+          # 对应 PySpark 的 duration_out_of_range
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments: 
+                min_value: 2.0
+                max_value: 180.0 
+
+      - name: trip_distance_miles
+        tests:
+          # 对应 PySpark 的 distance_too_small
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments: 
+                min_value: 0.1 # 必须严格大于 0.1
+
+      - name: efficiency_score
+        tests:
+          # 对应 PySpark 的 efficiency_too_high
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments: 
+                max_value: 15.0 # 必须严格小于 15.0
+
+      - name: fare_amount
+        tests:
+          # 对应 PySpark 的 fare_too_low
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments: 
+                min_value: 2.5 # 必须严格大于 2.5
+
+      # Lakehouse Metadata Integrity 
+      - name: partition_year_month 
+        description: "Partition key"
+        tests:
+          - not_null 
+          - dbt_expectations.expect_column_values_to_match_regex:
+              arguments: 
+                regex: "^[0-9]{6}$"
+
+      - name: meta_bronze_run_id
+        description: "Data lineage tracking ID"
+        tests:
+          - not_null 
+
+          
+
+

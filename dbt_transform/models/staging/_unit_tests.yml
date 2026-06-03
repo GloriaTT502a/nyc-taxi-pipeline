@@ -1,0 +1,23 @@
+version: 2 
+
+unit_tests:
+  - name: test_stg_nyc_taxi__yellow_trips_cleansing_logic
+    description: "Testing edge cases and macro conversion for yellow trips staging."
+    model: stg_nyc_taxi__yellow_trips 
+
+    given: 
+      - input: source('databricks_ingest', 'yellow_trips') 
+        rows: 
+          - {payment_type: 'CRE'}
+          - {payment_type: ' Cas '}
+          - {payment_type: 'void'}
+          - {payment_type: 'UNKNOWN_NEW_PAYMENT'}
+          - {payment_type: '3'}
+
+    expect: 
+      rows: 
+        - {payment_type: 1}
+        - {payment_type: 2}
+        - {payment_type: 6}
+        - {payment_type: 5} 
+        - {payment_type: 3}
