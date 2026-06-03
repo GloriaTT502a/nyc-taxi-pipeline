@@ -65,11 +65,15 @@ jobs:
     # ==========================================
     - name: Install dbt Dependencies
       working-directory: ./dbt_transform  # 🌟 切换到你的 dbt 项目根目录
+      env:
+        DBT_PROFILES_DIR: .  # 🌟 告诉 dbt 在当前目录寻找 profiles.yml
       run: |
         dbt deps
 
     - name: Run dbt Unit Tests (Local)
       working-directory: ./dbt_transform
+      env:
+        DBT_PROFILES_DIR: .  # 🌟 告诉 dbt 在当前目录寻找 profiles.yml
       run: |
         # 🌟 单元测试不查底层数据，速度极快
         dbt test --select "test_type:unit"
@@ -78,6 +82,7 @@ jobs:
       working-directory: ./dbt_transform
       env:
         # 🌟 注入 GitHub Secrets 中的【真实】凭证供 dbt 连库测试
+        DBT_PROFILES_DIR: .
         DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
         DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
       run: |
