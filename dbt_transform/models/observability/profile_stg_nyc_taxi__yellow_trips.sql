@@ -1,7 +1,7 @@
 {{ 
     config(
         materialized='incremental',
-        unique_key=['trip_id', 'profiled_date'], 
+        unique_key=['column_name', 'profiled_date'], 
         tags=['observability', 'dq_check']
     ) 
 }}
