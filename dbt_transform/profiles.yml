@@ -1,0 +1,15 @@
+# 文件路径: dbt_transform/profiles.yml
+
+dbt_transform:
+  target: dev
+  outputs:
+    dev:
+      type: databricks
+      catalog: nyc
+      schema: dev
+      threads: 4
+      # 🌟 核心改动：摒弃本地的 oauth，改为基于环境变量的 Token 认证
+      host: "{{ env_var('DATABRICKS_HOST') }}"
+      http_path: "{{ env_var('DATABRICKS_HTTP_PATH') }}"
+      token: "{{ env_var('DATABRICKS_TOKEN') }}"
+      
