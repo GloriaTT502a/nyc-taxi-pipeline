@@ -1,0 +1,67 @@
+@startuml
+' === Whole Global settings ===
+hide circle
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+' === Silver Layer (Using blue background) ===
+package "Silver Layer (Core Data)" #E8F4F8 {
+    
+    entity "dim_time" as dim_time {
+        * time_key : INT <<PK>>
+        --
+        pickup_hour : TIMESTAMP
+        year_num: INT 
+        month_num: INT 
+        day_of_week: INT 
+        hour_of_day: INT 
+        is_peak_hour : INT 
+        is_congestion_pricing_era: INT 
+        is_ny_state_holiday: INT 
+        is_covid_lockdown_era: INT 
+        is_driver_shift_time: INT 
+        is_extreme_weather: INT 
+    }
+
+    entity "dim_h3_grid" as dim_h3_grid {
+        * h3_cell_id : STRING <<PK>>
+        --
+        zone_name : STRING
+    }
+
+    entity "fact_trips" as fact_trips {
+        * trip_key : STRING <<PK>>
+        --
+        time_key : INT <<FK>>
+        h3_pickup : STRING <<FK>>
+        net_revenue : DOUBLE
+        efficiency_index : DOUBLE
+    }
+}
+
+' === Gold Layer (Using light yellow color) ===
+package "Gold Layer (Data Marts)" #FFF9E6 {
+    
+    entity "mart_h3_hourly_efficiency" as mart_efficiency {
+        * h3_cell_id : STRING <<FK>>
+        * time_key : INT <<FK>>
+        --
+        avg_efficiency : DOUBLE
+    }
+
+    entity "mart_spatial_churn_markov" as mart_churn {
+        * h3_cell_id : STRING <<FK>>
+        --
+        activity_month : DATE
+        current_state : STRING
+    }
+}
+
+' === Relationship Setting ===
+dim_time ||..o{ fact_trips : "filters & groups"
+dim_h3_grid ||..o{ fact_trips : "locates"
+fact_trips ||..o{ mart_efficiency : "aggregates"
+fact_trips ||..o{ mart_churn : "feeds state engine"
+
+@enduml

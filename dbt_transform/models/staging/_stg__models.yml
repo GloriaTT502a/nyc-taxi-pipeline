@@ -156,34 +156,34 @@ models:
       - name: surcharge_amount 
         tests: 
           - dbt_expectations.expect_column_values_to_be_of_type:
-              column_type: decimal(9,2) 
+              column_type: decimal
 
       - name: mta_tax_amount 
         tests: 
           - dbt_expectations.expect_column_values_to_be_of_type:
-              column_type: decimal(9,2) 
+              column_type: decimal
 
       - name: tip_amount 
         tests: 
           - dbt_expectations.expect_column_values_to_be_of_type:
-              column_type: decimal(9,2) 
+              column_type: decimal
           
       - name: improvement_surcharge_amount 
         tests: 
           - dbt_expectations.expect_column_values_to_be_of_type:
-              column_type: decimal(9,2) 
+              column_type: decimal
 
       - name: congestion_surcharge_amount 
         tests: 
           - dbt_expectations.expect_column_values_to_be_of_type:
-              column_type: decimal(9,2) 
+              column_type: decimal 
 
       - name: airport_fee_amount 
         tests: 
           - dbt_expectations.expect_column_values_to_be_of_type:
-              column_type: decimal(9,2) 
+              column_type: decimal
 
       - name: cbd_congestion_fee_amount 
         tests: 
           - dbt_expectations.expect_column_values_to_be_of_type:
-              column_type: decimal(9,2) 
+              column_type: decimal 
