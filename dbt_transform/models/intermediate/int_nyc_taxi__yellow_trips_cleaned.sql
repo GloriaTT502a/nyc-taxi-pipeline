@@ -22,9 +22,9 @@ select
     trip_duration_minutes,
     
     -- ==========================================
-    -- 2. 业务清洗 A：数据字典归化 (Dictionary Normalization)
+    -- 2. Clean A: Dictionary Normalization)
     -- ==========================================
-    -- 修复 rate_code_id 的野值 (PySpark 没有做这件事)
+    --  rate_code_id 
     case 
         when rate_code_id in (1, 2, 3, 4, 5, 6) then rate_code_id
         else null -- 将 8, 33, 99, 128 等所有非法值统一归化为 NULL
@@ -35,13 +35,13 @@ select
     has_store_and_fwd,
 
     -- ==========================================
-    -- 3. 业务清洗 B：财务逻辑智能修正 (Financial Soft Correction)
+    -- 3. Clean B：Financial Soft Correctio)
     -- ==========================================
     fare_amount,
     surcharge_amount,
     mta_tax_amount,
     
-    -- 跨列逻辑修正：现金支付不允许有系统小费记录
+    -- There is not tip for cash payment type 
     case 
         when payment_type = 2 then cast(0.00 as decimal(9,2))
         else tip_amount
@@ -54,7 +54,7 @@ select
     cbd_congestion_fee_amount,
     total_amount,
 
-    -- 其他维度透传
+    -- Other features 
     pickup_h3_index,
     dropoff_h3_index,
     is_pickup_fallback,
@@ -63,16 +63,13 @@ select
     partition_year_month,
 
     -- ==========================================
-    -- 4. 业务清洗 C：软隔离打标 (Soft Flagging)
+    -- 4. Clean C：Soft Flagging
     -- ==========================================
-    -- 对于那些金额不合理的单子，不要像 PySpark 那样直接删掉，而是打上标签供分析
+    -- Flag the incorrect records 
     case 
-        -- 比如：MTA 只能是 0 或 0.50，如果出现 31.72 这种乱码，打为 false
         when mta_tax_amount not in (0.00, 0.50) 
              and not (mta_tax_amount = -0.50 and payment_type in (4, 6))
         then false
-        
-        -- 你可以继续在这里添加那些你不忍心直接在 Spark 里 drop 掉的业务规则
         
         else true
     end as is_valid_financial_logic, 
