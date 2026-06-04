@@ -1,0 +1,13 @@
+raw_payment_type,standard_payment_type,payment_code
+cre,credit card,1
+crd,credit card,1
+credit,credit card,1
+credit card,credit card,1
+cas,cash,2
+csh,cash,2
+cash,cash,2
+dis,dispute,4
+dispute,dispute,4
+void,voided trip,6
+voided,voided trip,6
+voided trip,voided trip,6
