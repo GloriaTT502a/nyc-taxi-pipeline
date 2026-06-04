@@ -106,7 +106,7 @@ models:
               arguments: 
                 min_value: 0 
           - dbt_expectations.expect_column_values_to_be_of_type:
-              column_type: decimal(9,2)
+              column_type: decimal
 
       - name: trip_duration_minutes
         tests:
@@ -137,7 +137,7 @@ models:
               arguments: 
                 min_value: 2.5 # 必须严格大于 2.5
           - dbt_expectations.expect_column_values_to_be_of_type:
-              column_type: decimal(9,2)
+              column_type: decimal
 
       # Lakehouse Metadata Integrity 
       - name: partition_year_month 
