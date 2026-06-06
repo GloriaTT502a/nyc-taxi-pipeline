@@ -6,7 +6,17 @@ dbt_transform:
     dev:
       type: databricks
       catalog: nyc
-      schema: dev
+      host: https://dbc-f9d1ed70-8f10.cloud.databricks.com
+      http_path: /sql/1.0/warehouses/e6851c934b9e0136
+      schema: dev 
+      auth_type: oauth
+      profile: DEFAULT
+
+
+    ci:
+      type: databricks
+      catalog: nyc
+      schema: dev_ci
       threads: 4
       # 🌟 核心改动：摒弃本地的 oauth，改为基于环境变量的 Token 认证
       host: "{{ env_var('DATABRICKS_HOST') }}"
