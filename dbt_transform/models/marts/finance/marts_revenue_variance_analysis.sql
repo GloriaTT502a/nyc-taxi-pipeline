@@ -8,7 +8,7 @@
 -- 1. basic merge: calculate trip, revenue by month
 with monthly_segment_metrics as (
     select 
-        data_trunc('month', pickup_at) as trip_month, 
+        date_trunc('month', pickup_at) as trip_month, 
 
         case rate_code_id
             when 1 then '1-Standard Rate'
