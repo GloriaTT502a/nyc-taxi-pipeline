@@ -6,6 +6,26 @@ from unittest.mock import patch
 import pyspark.sql.functions as F
 from nyc_taxi_pipeline.silver.standardization import ensure_bronze_schema, apply_transformations, apply_dq_and_split
 
+
+def test_apply_transformations_summer_time(spark):
+    """测试夏令时 (EDT: UTC-4) 的转换（防止时间拨号翻车）"""
+    df = spark.createDataFrame([
+        # 纽约时间：2026年7月1日 (夏令时)
+        Row(pickup_datetime=datetime(2026, 7, 1, 10, 0, 0), 
+            dropoff_datetime=datetime(2026, 7, 1, 10, 30, 0), 
+            fare_amount=30.0, _run_id="old_id", _load_timestamp=datetime.now(), total_amount=35.0, YYYYMM=202607)
+    ]) 
+
+    aligned_df = ensure_bronze_schema(df)
+    res_df = apply_transformations(aligned_df, run_id="new_run_123")
+    row = res_df.collect()[0]
+    
+    # UTC 断言：夏令时相差 4 个小时 (10:00 + 4小时 = 14:00)
+    assert row["pickup_datetime_utc"] == datetime(2026, 7, 1, 14, 0, 0)
+    assert row["dropoff_datetime_utc"] == datetime(2026, 7, 1, 14, 30, 0)
+    assert row["duration_min"] == 30.0
+
+
 def test_ensure_bronze_schema_missing_required(spark):
     # 缺少必填列 total_amount
     df = spark.createDataFrame([Row(vendor_id="1", YYYYMM=202601)])
@@ -31,6 +51,9 @@ def test_apply_transformations(spark):
     aligned_df = ensure_bronze_schema(df)
     res_df = apply_transformations(aligned_df, run_id="new_run_123")
     row = res_df.collect()[0]
+    
+    assert row["pickup_datetime_utc"] == datetime(2026, 1, 1, 15, 0, 0)
+    assert row["dropoff_datetime_utc"] == datetime(2026, 1, 1, 15, 30, 0)
     
     assert row["duration_min"] == 30.0  # 30分钟
     assert row["temp_eff"] == 1.0       # 30.0 / 30.0 = 1.0

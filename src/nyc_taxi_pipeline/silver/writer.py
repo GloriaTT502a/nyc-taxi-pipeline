@@ -43,13 +43,20 @@ class SilverDeltaWriter:
         )
 
         logger.info(f"Process Merge, dynamic partition: [{partition_values_str}]")
-        target_delta = DeltaTable.forName(spark, table_name) 
+        
 
-        (
-            target_delta.alias("t").merge(df.alias("s")) 
-                    .whenMatchedUpdatedAll() 
-                    .whenNotMatchInsertAll() 
-                    .execute()
-        )
+        df.createOrReplaceTempView("source_updates") 
+
+        merge_query = f"""
+        MERGE INTO {table_name} AS t
+        USING source_updates AS s
+        ON {merge_condition}
+        WHEN MATCHED THEN UPDATE SET *
+        WHEN NOT MATCHED THEN INSERT *
+        """ 
+        
+        spark.sql(merge_query) 
+
+        logger.info(f"Upsert SQL executed successfully on {table_name}")
         
         

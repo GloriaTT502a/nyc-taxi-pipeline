@@ -35,3 +35,6 @@ BRONZE_SCHEMA = {
 
 # 动态生成列名列表供后续 Select 使用
 EXPECTED_BRONZE_COLS = list(BRONZE_SCHEMA.keys())
+
+NY_TZ = "America/New_York"
+

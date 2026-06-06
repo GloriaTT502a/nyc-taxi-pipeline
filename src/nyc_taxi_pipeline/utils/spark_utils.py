@@ -75,19 +75,21 @@ def get_spark_session(app_name="nyc-taxi-pipeline"):
     # ==========================================
     # 场景 3：本地开发机连 Databricks 远程集群 (Remote Debugging)
     # ==========================================
-    logger.info("🌐 尝试通过 Databricks Connect 桥接云端远程集群...")
+    logger.info("尝试通过 Databricks Connect 桥接云端远程集群...")
     try:
         from databricks.connect import DatabricksSession
+        logger.info("正在建立 Databricks Connect v2 桥接...")
         return (
-            DatabricksSession.builder
-            .appName(f"{app_name}-remote-debug")
-            .getOrCreate()
-        )
+                DatabricksSession.builder
+                .serverless() # 强制要求 Databricks 分配 Serverless 计算资源
+                .getOrCreate()
+        ) 
+    
     except ImportError:
         error_msg = (
-            "❌ 无法路由到有效的 Spark 计算环境！\n"
-            "👉 如果你想跑本地快速测试，请在终端执行: export USE_LOCAL_SPARK=true\n"
-            "👉 如果你想连云端集群做集成联调，请先执行: pip install -r requirements/databricks.txt"
+            "无法路由到有效的 Spark 计算环境！\n"
+            "如果你想跑本地快速测试，请在终端执行: export USE_LOCAL_SPARK=true\n"
+            "如果你想连云端集群做集成联调，请先执行: pip install -r requirements/databricks.txt"
         )
         logger.error(error_msg)
         raise RuntimeError(error_msg)

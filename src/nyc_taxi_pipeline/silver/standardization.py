@@ -5,7 +5,7 @@ import pyspark.sql.functions as F
 from pyspark.sql import DataFrame
 
 # Input schema and dq rules 
-from .schema import BRONZE_SCHEMA, EXPECTED_BRONZE_COLS
+from .schema import BRONZE_SCHEMA, EXPECTED_BRONZE_COLS, NY_TZ
 from .dq_rules import get_silver_dq_rules
 
 logger = logging.getLogger(__name__)
@@ -30,9 +30,16 @@ def apply_transformations(df: DataFrame, run_id: str) -> DataFrame:
         F.col(c) for c in EXPECTED_BRONZE_COLS 
     ]
     
+    # convert pickup timestamp and dropoff timestamp to UTC
+    
+    pickup_utc = F.to_utc_timestamp(F.col("pickup_datetime"), NY_TZ)
+    dropoff_utc = F.to_utc_timestamp(F.col("dropoff_datetime"), NY_TZ) 
+
     return (
-        df.select(*base_cols,
-                  ((F.col("dropoff_datetime").cast("long") - F.col("pickup_datetime").cast("long"))/60).alias("duration_min"),
+        df.select(*base_cols, 
+                  pickup_utc.alias("pickup_datetime_utc"), 
+                  dropoff_utc.alias("dropoff_datetime_utc"), 
+                  ((dropoff_utc.cast("long") - pickup_utc.cast("long")) / 60.0).alias("duration_min"),
                   F.lit(run_id).alias("_run_id"), 
                   F.current_timestamp().alias("_processed_at"))
           .withColumn("temp_eff", 
