@@ -32,6 +32,21 @@ def main():
     checkpoint_schema = "nyc.process_silver"                        # Checkpoint 临时库存放地
     zone_dim_table = "nyc.process_gold.dim_taxi_zone_h3"                           # H3 空间维度表 (请根据你真实的表名替换)
 
+    
+    RESET_ENVIRONMENT = True 
+
+    if RESET_ENVIRONMENT:
+        logger.warning("[开发模式] 正在清理上一次的测试数据和表结构...")
+        
+        # 使用 Spark SQL 彻底删除目标表和审计表
+        spark.sql(f"DROP TABLE IF EXISTS {target_silver_table}")
+        spark.sql(f"DROP TABLE IF EXISTS {audit_table}")
+
+        quarantine_table = target_silver_table + "_quarantine" 
+        spark.sql(f"DROP TABLE IF EXISTS {quarantine_table}")
+        
+        logger.info("旧数据清理完毕，本次运行将从零开始构建全新表结构！") 
+    
     # ==========================================
     # 2. 读取输入数据
     # ==========================================

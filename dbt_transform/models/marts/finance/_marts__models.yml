@@ -1,0 +1,15 @@
+version: 2 
+
+models: 
+  - name: marts_revenue_variance_analysis 
+    description: "Monthly revenue variance and contribution analysis by rate code." 
+    columns: 
+      - name: trip_month 
+        tests: 
+          - not_null 
+      - name: rate_code_name 
+        tests: 
+          - not_null 
+      - name: contribution_to_total_growth 
+        description: "How much this specific segment drove the overall MoM growth." 
+        

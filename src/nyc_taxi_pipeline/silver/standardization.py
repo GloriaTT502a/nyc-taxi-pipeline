@@ -38,7 +38,7 @@ def apply_transformations(df: DataFrame, run_id: str) -> DataFrame:
     return (
         df.select(*base_cols, 
                   pickup_utc.alias("pickup_datetime_utc"), 
-                  dropoff_utc.alias("dropoff_datetime_utc")
+                  dropoff_utc.alias("dropoff_datetime_utc"), 
                   ((dropoff_utc.cast("long") - pickup_utc.cast("long")) / 60.0).alias("duration_min"),
                   F.lit(run_id).alias("_run_id"), 
                   F.current_timestamp().alias("_processed_at"))
