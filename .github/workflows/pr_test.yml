@@ -70,26 +70,63 @@ jobs:
       run: |
         dbt deps
 
-    - name: Run dbt Unit Tests (Local)
+    - name: Run dbt Unit Tests (Strictly Offline)
       working-directory: ./dbt_transform
       env:
-        DBT_PROFILES_DIR: .  # 告诉 dbt 在当前目录寻找 profiles.yml
-        DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
-        DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
-        DATABRICKS_HTTP_PATH: ${{ secrets.DATABRICKS_HTTP_PATH }}
-      run: |
-        # 单元测试不查底层数据，速度极快
-        dbt test --select "test_type:unit"
-
-    - name: Run dbt Build (Connect to Databricks)
-      working-directory: ./dbt_transform
-      env:
-        # 注入 GitHub Secrets 中的【真实】凭证供 dbt 连库测试
         DBT_PROFILES_DIR: .
+        # ⚠️ 绝对禁止在此注入真实的 DATABRICKS_HOST/TOKEN
+      run: |
+        # 强行指定 ci_offline 目标，加上 timeout 强制熔断机制（60秒上限）
+        timeout 60s dbt test --target ci_offline --select "test_type:unit" || (echo "离线测试超时！请检查是否配置错误或存在试图联库的 Macro" && exit 1)
+    
+
+    # ==========================================
+    # dbt 阶段二：增量集成测试 (Slim CI)
+    # ==========================================
+    # 💡 这一步用于获取主分支最近一次成功构建的状态文件（manifest.json）
+    # 只有拿到这个文件，dbt 才知道哪些代码被修改了
+    - name: Download dbt state from main branch
+      if: github.event_name == 'pull_request'
+      uses: dawidd6/action-download-artifact@v2
+      # 如果找不到产物（比如第一次运行），不要报错停止流水线
+      continue-on-error: true
+      with:
+        github_token: ${{secrets.GITHUB_TOKEN}}
+        workflow: pr_test.yml # 你的 workflow 文件名
+        branch: main
+        name: dbt-manifest
+        path: ./dbt_transform/prod-state
+
+    - name: Run dbt Slim CI Build (Online Integration)
+      working-directory: ./dbt_transform
+      env:
+        DBT_PROFILES_DIR: .
+        # 此时才安全地注入真实的测试/生产凭证
         DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
         DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
         DATABRICKS_HTTP_PATH: ${{ secrets.DATABRICKS_HTTP_PATH }}
       run: |
-        # 如果你配置了 CI 专用的 target，可以在这里加上 -t ci
-        # 这里为了演示先跑全量，生产环境中推荐替换为 dbt build --select "state:modified+"
-        dbt build
+        # 检查是否成功下载了主分支的 state 文件
+        if [ -f "./prod-state/manifest.json" ]; then
+          echo "State file found. Running Slim CI..."
+          # 工业级核心：只构建修改过的模型 (+下游)，执行对应测试，且复用(defer)未修改的上游物理表
+          dbt build \
+            --select "state:modified+" \
+            --state ./prod-state \
+            --defer
+        else
+          echo "State file not found. Running fallback (Data Tests Only)..."
+          # 退化方案：如果没拿到状态文件，千万不要 build 全库，仅跑数据测试兜底
+          dbt test --exclude "test_type:unit"
+        fi
+
+    # ==========================================
+    # 收尾阶段：上传最新的状态文件
+    # ==========================================
+    # 这一步仅在推送到 main 分支时执行，保存最新的 manifest.json 供以后的 PR 对比使用
+    - name: Upload dbt manifest artifact
+      if: github.ref == 'refs/heads/main'
+      uses: actions/upload-artifact@v4
+      with:
+        name: dbt-manifest
+        path: ./dbt_transform/target/manifest.json
