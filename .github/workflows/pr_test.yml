@@ -74,7 +74,9 @@ jobs:
       working-directory: ./dbt_transform
       env:
         DBT_PROFILES_DIR: .
-        # ⚠️ 绝对禁止在此注入真实的 DATABRICKS_HOST/TOKEN
+        # Close Databricks retry drive
+        DATABRICKS_HTTP_RETRIES: "0"
+        DATABRICKS_RETRY_TIMEOUT_SECONDS: "0"
       run: |
         # 强行指定 ci_offline 目标，加上 timeout 强制熔断机制（60秒上限）
         timeout 60s dbt test --target ci_offline --select "test_type:unit" || (echo "离线测试超时！请检查是否配置错误或存在试图联库的 Macro" && exit 1)
