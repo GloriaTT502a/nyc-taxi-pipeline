@@ -14,7 +14,7 @@ dbt_transform:
       threads: 4
 
 
-    ci:
+    ci_offline:
       type: databricks
       catalog: dummy_catalog
       schema: dummy_schema
