@@ -31,6 +31,9 @@ select
         -- ==========================================
         cast(pickup_datetime as timestamp) as pickup_at,        -- 规范：时间戳以 _at 结尾
         cast(dropoff_datetime as timestamp) as dropoff_at,
+
+        cast(pickup_datetime_utc as timestamp) as pickup_at_utc,        -- 规范：时间戳以 _at 结尾
+        cast(dropoff_datetime_utc as timestamp) as dropoff_at_utc,
         -- ==========================================
         -- 维度与分类标志 (Dimensions & Flags)
         -- ==========================================

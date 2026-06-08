@@ -44,3 +44,4 @@ spark-warehouse/
 metastore_db/
 derby.log
 EOF
+.env

@@ -17,6 +17,8 @@ select
     dropoff_location_id,
     pickup_at,
     dropoff_at,
+    pickup_at_utc, 
+    dropoff_at_utc, 
     passenger_count,
     trip_distance_miles,
     trip_duration_minutes,
