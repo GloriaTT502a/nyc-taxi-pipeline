@@ -63,6 +63,16 @@ jobs:
     # ==========================================
     # 第二防线：dbt 逻辑与集成测试
     # ==========================================
+    - name: dbt Connection Debug
+      working-directory: ./dbt_transform
+      env:
+        DBT_PROFILES_DIR: .
+        DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+        DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        DATABRICKS_HTTP_PATH: ${{ secrets.DATABRICKS_HTTP_PATH }}
+      run: |
+        dbt debug --target ci_pipeline
+    
     - name: Install dbt Dependencies
       working-directory: ./dbt_transform  # 🌟 切换到你的 dbt 项目根目录
       env:
@@ -70,6 +80,8 @@ jobs:
       run: |
         dbt deps
 
+  
+    
     - name: Run dbt Unit Tests (Compute on Databricks)
       working-directory: ./dbt_transform
       env:
@@ -80,8 +92,12 @@ jobs:
         DATABRICKS_HTTP_PATH: ${{ secrets.DATABRICKS_HTTP_PATH }}
       run: |
         # 加上 --debug 参数，它会把每一次向 Databricks 发送的底层 API 请求都打印出来
-        timeout 60s dbt --debug test --select "test_type:unit"
+        dbt --debug test \
+          --target ci_pipeline \
+          --select "test_type:unit"
 
+    
+    
     # ==========================================
     # dbt 阶段二：增量集成测试 (Slim CI)
     # ==========================================
@@ -113,13 +129,16 @@ jobs:
           echo "State file found. Running Slim CI..."
           # 工业级核心：只构建修改过的模型 (+下游)，执行对应测试，且复用(defer)未修改的上游物理表
           dbt build \
+            --target ci_pipeline \
             --select "state:modified+" \
             --state ./prod-state \
             --defer
         else
           echo "State file not found. Running fallback (Data Tests Only)..."
           # 退化方案：如果没拿到状态文件，千万不要 build 全库，仅跑数据测试兜底
-          dbt test --exclude "test_type:unit"
+          dbt test \
+            --target ci_pipeline \
+            --exclude "test_type:unit"
         fi
 
     # ==========================================
@@ -132,3 +151,5 @@ jobs:
       with:
         name: dbt-manifest
         path: ./dbt_transform/target/manifest.json
+
+    
