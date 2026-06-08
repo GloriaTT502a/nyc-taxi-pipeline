@@ -70,17 +70,17 @@ jobs:
       run: |
         dbt deps
 
-    - name: Run dbt Unit Tests (Strictly Offline)
+    - name: Run dbt Unit Tests (Compute on Databricks)
       working-directory: ./dbt_transform
       env:
         DBT_PROFILES_DIR: .
-        # Close Databricks retry drive
-        DATABRICKS_HTTP_RETRIES: "0"
-        DATABRICKS_RETRY_TIMEOUT_SECONDS: "0"
+        # 🌟 核心修正：dbt 的单元测试需要云端引擎解析 SQL，必须注入真实凭证！
+        DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+        DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        DATABRICKS_HTTP_PATH: ${{ secrets.DATABRICKS_HTTP_PATH }}
       run: |
-        # 强行指定 ci_offline 目标，加上 timeout 强制熔断机制（60秒上限）
-        timeout 60s dbt test --target ci_offline --select "test_type:unit" || (echo "离线测试超时！请检查是否配置错误或存在试图联库的 Macro" && exit 1)
-    
+        # 移除 ci_offline，直接使用默认配置。通过 test_type:unit 保证它不查真实数据表。
+        dbt test --select "test_type:unit"
 
     # ==========================================
     # dbt 阶段二：增量集成测试 (Slim CI)

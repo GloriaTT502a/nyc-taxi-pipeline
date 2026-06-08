@@ -13,14 +13,4 @@ dbt_transform:
       profile: DEFAULT
       threads: 4
 
-
-    ci_offline:
-      type: databricks
-      catalog: dummy_catalog
-      schema: dummy_schema
-      # 强制指向本地回环，切断向云端发起 TCP 连接的可能，实现真正的 Fail-Fast
-      host: "127.0.0.1" 
-      http_path: "/dummy"
-      token: "dummy_token"
-      connect_retries: 0 # 禁用重试，避免静默等待
       
