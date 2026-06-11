@@ -51,4 +51,7 @@ LINEAGE_COLUMN = "_input_file"
 
 # Used in H3 enrichment
 H3_RESOLUTION = int(os.getenv("ENV_H3_RESOLUTION", 8)) 
+DIM_H3_TABLE = "nyc.process_gold.dim_taxi_zone_h3"        # 1对1 质心业务维度表
+BRIDGE_H3_TABLE = "nyc.process_gold.brg_taxi_zone_h3"  # 1对N 空间平摊桥接表
+SHP_PATH = "/Volumes/nyc/default/nyczone/taxi_zones/taxi_zones.shp"
 
