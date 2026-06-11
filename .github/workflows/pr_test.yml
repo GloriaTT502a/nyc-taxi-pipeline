@@ -44,6 +44,7 @@ jobs:
         # 工业级优雅安装：只需一行！
         # 这会自动安装 pyspark, delta-spark (核心)，以及 pytest, chispa (测试包)
         # 它绝对不会碰 databricks-connect，所以连卸载的步骤都省了！
+        pip install pyshp h3 shapely pyproj pandas pytest pyspark
         pip install -e ".[test]" dbt-databricks sqlfluff 
 
 
