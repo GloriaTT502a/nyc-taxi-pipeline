@@ -19,8 +19,9 @@ dependencies = [
 ]
 
 [project.scripts]
-# 🌟 这行非常重要！它把 run_silver.py 定义为了一个可以被调用的入口
+# 这行非常重要！它把 run_silver.py 定义为了一个可以被调用的入口
 run_silver = "nyc_taxi_pipeline.run_silver:main"
+run_build_zone_lookup = "nyc_taxi_pipeline.spatial.run_build_zone_lookup:main"
 
 # 工业级 Best Practice：将本地调试和测试工具归为“开发专属配置”
 [project.optional-dependencies]

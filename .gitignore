@@ -45,3 +45,5 @@ metastore_db/
 derby.log
 EOF
 .env
+dbt_transform/.user.yml
+.idea/

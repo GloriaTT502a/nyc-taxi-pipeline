@@ -40,6 +40,30 @@ resources:
             package_name: nyc_taxi_pipeline
             entry_point: run_silver
 
+    # 🌟 这是新增的 Spatial Pipeline
+    run_spatial_pipeline:
+      name: "[${bundle.target}] NYC Taxi Spatial Build"
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "3"
+            dependencies:
+              - ./dist/*.whl
+              - h3
+              - shapely
+              - pyproj
+              - pandas
+              - pyshp==2.3.1
+         
+      tasks:
+        - task_key: spatial_processing
+          environment_key: default
+          python_wheel_task:
+            package_name: nyc_taxi_pipeline
+            # 确保在你的 setup.py 或 pyproject.toml 中定义了这个 entry_point 
+            # 指向你类似 run_test_spatial.py 里的 main() 函数
+            entry_point: run_build_zone_lookup 
+
 targets:
   dev:
     mode: development
@@ -47,9 +71,12 @@ targets:
 
     workspace:
       host: https://dbc-f9d1ed70-8f10.cloud.databricks.com
+      artifact_path: /Volumes/nyc/dev/bundle_assets/${workspace.current_user.userName}/${bundle.name}
 
   prod:
     mode: production
 
     workspace:
       host: https://dbc-f9d1ed70-8f10.cloud.databricks.com 
+      artifact_path: /Volumes/nyc/dev/bundle_assets/${workspace.current_user.userName}/${bundle.name}
+
