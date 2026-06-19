@@ -34,7 +34,7 @@ The project decouples the **Ingestion Layer (Python/Spark)** from the **Business
 ```text
 nyc-taxi-pipeline/
 ├── .github/workflows/      # Automated CI/CD (Linting, Testing, Deployment)
-├── dbt_project/            # 🌟 Analytics Engineering Layer
+├── dbt_transform/            # 🌟 Analytics Engineering Layer
 │   ├── models/             # SQL-based modeling (Staging -> Silver -> Gold)
 │   ├── dbt_project.yml     # dbt configuration for Databricks/Unity Catalog
 │   └── profiles.yml        # Connection profiles
