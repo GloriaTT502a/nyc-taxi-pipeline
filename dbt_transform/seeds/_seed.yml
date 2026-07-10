@@ -1,0 +1,8 @@
+version: 2
+
+seeds:
+  - name: seed_vendor_mapping
+    config:
+      column_types:
+        vendor_id: string
+        vendor_name: string

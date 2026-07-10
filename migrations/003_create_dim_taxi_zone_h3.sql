@@ -2,12 +2,17 @@
 -- Migration Script: 003_create_dim_taxi_zone_h3.sql
 -- Description: Initialize NYC Taxi Dim taxi zone h3 Schema Delta table
 -- 
+-- ⚠️ IMPORTANT: 
+-- This script depends on the active Session Catalog context.
+-- DO NOT hardcode the catalog here. 
+-- If running manually in SQL Editor, ensure you run `USE CATALOG <your_catalog>;` first.
 -- ==============================================================================
 
--- 1. Make sure schema exists
-CREATE SCHEMA IF NOT EXISTS process_silver; 
 
-CREATE TABLE IF NOT EXISTS dim_taxi_zone_h3 (
+-- 1. Make sure schema exists
+CREATE SCHEMA IF NOT EXISTS process_gold; 
+
+CREATE TABLE IF NOT EXISTS process_gold.dim_taxi_zone_h3 (
     LocationID BIGINT COMMENT 'Taxi zone location ID',
     borough STRING COMMENT 'Borough name (e.g., Manhattan, Queens)',
     zone STRING COMMENT 'Taxi zone name',

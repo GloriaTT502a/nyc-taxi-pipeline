@@ -1,8 +1,8 @@
 import argparse
 from pyspark.sql import SparkSession
 
-from bronze.loader import TaxiBronzeLoader
-from common.logger import get_logger
+from nyc_taxi_pipeline.bronze.loader import TaxiBronzeLoader
+from nyc_taxi_pipeline.observability.app_logging import get_logger 
 
 logger = get_logger("run_bronze")
 

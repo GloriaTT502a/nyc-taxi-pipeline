@@ -1,27 +1,26 @@
+-- models/observability/profile_stg_nyc_taxi__yellow_trips.sql
+
 {{ 
     config(
         materialized='incremental',
-        unique_key=['column_name', 'profiled_date'], 
+        unique_key=['column_name', 'profiled_date'],
         tags=['observability', 'dq_check']
     ) 
 }}
 
 with raw_profile as (
-    -- 1. 调用宏生成当前表的全量探查结果
+    -- 利用 dbt-profiler 生成元数据分布
     {{ dbt_profiler.get_profile(relation=ref('stg_nyc_taxi__yellow_trips')) }}
 ),
 
 enriched_profile as (
     select
         *,
-        cast(profiled_at as date) as profiled_date 
-        
+        -- 将探查时间截断为日期，作为增量加载的主键之一
+        cast(current_timestamp() as date) as profiled_date,
+        -- 添加运行元数据，方便追溯
+        '{{ invocation_id }}' as meta_dbt_invocation_id
     from raw_profile
 )
 
-select * from enriched_profile
-
--- 【注意】：
--- 这里不需要像传统的业务增量模型那样写 {% if is_incremental() %} where ... {% endif %}
--- 因为 dbt-profiler 每次都会输出该表最新的几十行统计指标（每个字段一行）。
--- dbt 会自动将这几十行带时间戳的统计结果追加（或合并）到底层的物理表中。
+select * from enriched_profile 

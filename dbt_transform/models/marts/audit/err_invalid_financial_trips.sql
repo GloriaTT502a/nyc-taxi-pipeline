@@ -1,8 +1,14 @@
+-- Databricks 推荐：对于审计日志型数据，按月分区可大幅提升后续查询性能
+-- partition_by={'field': 'partition_year_month', 'data_type': 'int'}
+
 {{ 
     config(
         materialized='incremental',
         unique_key='trip_id', 
+        partition_by=['partition_year_month'], 
+        meta={'zorder': 'dq_error_type'}, 
         tags=['audit', 'dq']
+        
     ) 
 }}
 
@@ -12,19 +18,23 @@ with int_trips as (
 
 select
     trip_id,
+    partition_year_month, -- 建议透传此字段，方便审计表做时间分区
     pickup_at,
     vendor_id,
     fare_amount,
     mta_tax_amount,
     payment_type,
     
-    -- 🌟 工业界规范：显式标记死亡原因 (Error Reason)
     'INVALID_FINANCIAL_LOGIC' as dq_error_type,
     'mta_tax_amount or payment_type logic violation' as dq_error_message,
     
-    -- 携带审计字段，方便追责
+    -- 携带审计字段，方便追溯源头
     meta_bronze_run_id,
     meta_int_processed_at
 from int_trips
 -- 拦截掉进不了 Fact 表的脏数据
-where is_valid_financial_logic = false
+where is_valid_financial_logic = false 
+
+{% if is_incremental() %}
+    and meta_int_processed_at > (select max(meta_int_processed_at) from {{ this }})
+{% endif %}

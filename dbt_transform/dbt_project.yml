@@ -53,3 +53,19 @@ models:
       # 探查数据必须物理固化
       +materialized: table
       +tags: ["monitoring", "layer_observability"]
+
+
+vars:
+  dq_rules:
+    # 财务 MTA Tax 校验逻辑
+    # 4 = Disputed
+    # 6 = Voided trip (作废订单)
+    # 当一笔订单处于 Disputed 或 Voided 状态时，为了在账目上清零，系统会自动发送一个反向的 -0.50 MTA 税记录。
+    mta_tax_validation: >
+      (mta_tax_amount in (0.00, 0.50)) 
+      or (mta_tax_amount = -0.50 and payment_type in (4, 6))
+      
+
+seeds:
+  nyc_taxi_pipeline:
+    +quote_columns: false 

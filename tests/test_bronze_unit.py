@@ -19,7 +19,7 @@ class TestBronzeUnitLogic:
     def test_generate_target_paths(self, spark: SparkSession):
         # 🌟 修复 2: 移除传入的 base_path="/tmp/test/"
         # 让它自动回退读取 config/settings.py 里配置的默认路径 (/Volumes/nyc/default/)
-        loader = TaxiBronzeLoader(spark)
+        loader = TaxiBronzeLoader(spark=spark)
         
         paths = loader._generate_target_paths(201001, 201003)
         
@@ -36,7 +36,7 @@ class TestBronzeUnitLogic:
         """
         测试列名重命名、缺少列补齐以及元数据列解析
         """
-        loader = TaxiBronzeLoader(spark, run_id="test_run_123")
+        loader = TaxiBronzeLoader(spark=spark, run_id="test_run_123")
         
         # 1. 创建包含旧列名和缺少列的测试数据
         raw_data = [

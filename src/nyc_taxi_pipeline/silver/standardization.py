@@ -5,8 +5,28 @@ import pyspark.sql.functions as F
 from pyspark.sql import DataFrame
 
 # Input schema and dq rules 
-from .schema import BRONZE_SCHEMA, EXPECTED_BRONZE_COLS, NY_TZ
-from .dq_rules import get_silver_dq_rules
+from nyc_taxi_pipeline.config.settings import PipelineSettings 
+
+from nyc_taxi_pipeline.contracts.bronze_schema import BRONZE_SCHEMA, EXPECTED_BRONZE_COLS
+from nyc_taxi_pipeline.silver.dq_rules import get_silver_dq_rules
+
+from nyc_taxi_pipeline.metadata.system_columns import (
+    BRONZE_RUN_ID_COLUMN, 
+    BRONZE_LOAD_TIMESTAMP_COLUMN,
+    SILVER_RUN_ID_COLUMN, 
+    SILVER_LOAD_TIMESTAMP_COLUMN
+)
+
+from nyc_taxi_pipeline.metadata.business_columns import (
+    COL_PU_DATETIME, 
+    COL_DO_DATETIME,
+    COL_PU_DATETIME_UTC, 
+    COL_DO_DATETIME_UTC,
+    COL_FARE_AMOUNT, 
+    COL_FARE_PER_MINUTE, 
+    COL_DURATION_MIN 
+)
+
 
 logger = logging.getLogger(__name__)
 
@@ -22,35 +42,33 @@ def ensure_bronze_schema(df: DataFrame) -> DataFrame:
             )
     return normalized_df
 
-def apply_transformations(df: DataFrame, run_id: str) -> DataFrame:
+def apply_transformations(df: DataFrame, run_id: str, settings: PipelineSettings) -> DataFrame:
     """Add duration_min and temp_eff columns for data quality check"""
-    base_cols = [
-        F.col(c).alias("bronze_run_id") if c == "_run_id" else 
-        F.col(c).alias("bronze_load_timestamp") if c == "_load_timestamp" else 
-        F.col(c) for c in EXPECTED_BRONZE_COLS 
-    ]
+    base_cols = [F.col(c) for c in EXPECTED_BRONZE_COLS]
     
     # convert pickup timestamp and dropoff timestamp to UTC
     
-    pickup_utc = F.to_utc_timestamp(F.col("pickup_datetime"), NY_TZ)
-    dropoff_utc = F.to_utc_timestamp(F.col("dropoff_datetime"), NY_TZ) 
+    local_tz = settings.timezone
+
+    pickup_utc = F.to_utc_timestamp(F.col(COL_PU_DATETIME), local_tz)
+    dropoff_utc = F.to_utc_timestamp(F.col(COL_DO_DATETIME), local_tz) 
 
     return (
         df.select(*base_cols, 
-                  pickup_utc.alias("pickup_datetime_utc"), 
-                  dropoff_utc.alias("dropoff_datetime_utc"), 
-                  ((dropoff_utc.cast("long") - pickup_utc.cast("long")) / 60.0).alias("duration_min"),
-                  F.lit(run_id).alias("_run_id"), 
-                  F.current_timestamp().alias("_processed_at"))
-          .withColumn("temp_eff", 
-                      F.when(F.col("duration_min") > 0, F.col("fare_amount") / F.col("duration_min"))
+                  pickup_utc.alias(COL_PU_DATETIME_UTC), 
+                  dropoff_utc.alias(COL_DO_DATETIME_UTC), 
+                  ((dropoff_utc.cast("long") - pickup_utc.cast("long")) / 60.0).alias(COL_DURATION_MIN),
+                  F.lit(run_id).alias(SILVER_RUN_ID_COLUMN), 
+                  F.current_timestamp().alias(SILVER_LOAD_TIMESTAMP_COLUMN))
+          .withColumn(COL_FARE_PER_MINUTE, 
+                      F.when(F.col(COL_DURATION_MIN) > 0, F.col(COL_FARE_AMOUNT) / F.col(COL_DURATION_MIN))
                        .otherwise(F.lit(0.0)))
     )
 
-def apply_dq_and_split(df: DataFrame) -> tuple[DataFrame, DataFrame]:
+def apply_dq_and_split(df: DataFrame, settings: PipelineSettings) -> tuple[DataFrame, DataFrame]:
     """Get DQ rules"""
     # Get data quality check rules 
-    rules = get_silver_dq_rules()
+    rules = get_silver_dq_rules(settings)
     
     rule_evaluations = [
         F.when(condition, F.lit(rule_name)).otherwise(F.lit(None).cast("string"))

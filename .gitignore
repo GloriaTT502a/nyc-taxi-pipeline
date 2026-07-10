@@ -1,49 +1,71 @@
+# ==========================================
+# 1. Python 虚拟环境与包管理
+# ==========================================
 .venv/
-dbt_transform/target/
-dbt_transform/dbt_packages/
-.dbt
-.databricks
-
-.databricks
-.pytest_cache/
+.venv-dbt/
+venv/
+env/
+ENV/
 .poetry/
+
+# ==========================================
+# 2. Python 编译、缓存与分发产物
+# ==========================================
 __pycache__/
 *.pyc
-.databrickscfg
-
-# Python Build Artifacts
-*.egg-info/
-typings/
-
-# Secrets & Env
-.env
-.databrickscfg
-
-# Local IDE & Logs
-.vscode/
-logs/
-
-
-# Python 编译与分发产物
+*.pyo
+*.pyd
 build/
 dist/
 *.egg-info/
-__pycache__/
-*.pyc
+typings/
 
-# 备份与临时文件
-*.bak
-*.swp
-*.tmp
-
-# Pytest 与本地 Spark 运行时产生的缓存及日志
+# ==========================================
+# 3. 本地测试与覆盖率 (Pytest & Spark Local)
+# ==========================================
 .pytest_cache/
 .coverage
 htmlcov/
 spark-warehouse/
 metastore_db/
 derby.log
-EOF
-.env
+
+# ==========================================
+# 4. dbt (Data Build Tool) 运行产物
+# ==========================================
+dbt_transform/target/
+dbt_transform/dbt_packages/
+dbt_transform/logs/
 dbt_transform/.user.yml
+.dbt
+
+# ==========================================
+# 5. Databricks 云端配置与缓存
+# ==========================================
+.databricks/
+.databrickscfg
+
+# ==========================================
+# 6. 敏感信息、环境变量与凭证 (Secrets)
+# ==========================================
+.env
+
+# ==========================================
+# 7. 本地数据与日志 (防止 Git 崩溃的核心防线)
+# ==========================================
+*.csv
+*.parquet
+*.json
+data/
+temp/
+logs/
+
+# ==========================================
+# 8. IDE、编辑器与操作系统缓存
+# ==========================================
+.vscode/
 .idea/
+.DS_Store
+*.bak
+*.swp
+*.tmp

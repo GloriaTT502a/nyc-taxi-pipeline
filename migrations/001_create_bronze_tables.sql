@@ -1,8 +1,13 @@
 -- ==============================================================================
--- Migration Script: 001_create_bronze_tables
--- Description: Initialize NYC Taxi Bronze Schema Delta 表
+-- Migration Script: 001_create_bronze_tables.sql
+-- Description: Initialize NYC Taxi Bronze Schema Delta Table
 -- 
--- ==============================================================================
+-- IMPORTANT DEPLOYMENT NOTE: 
+-- This script relies on the active Session Catalog context.
+-- DO NOT hardcode the catalog. Ensure `USE CATALOG <env_catalog>;` is executed 
+-- prior to running this script in CI/CD or manual deployment.
+-- ============================================================================== 
+
 
 -- 1. Make sure schema exists
 CREATE SCHEMA IF NOT EXISTS process_bronze;
@@ -39,12 +44,12 @@ CREATE TABLE IF NOT EXISTS process_bronze.brz_yellow_nyc_taxi (
     YYYYMM INT, 
     
     -- Meta Data (Lineage)
-    _run_id STRING, 
-    _load_timestamp TIMESTAMP,  
-    _input_file STRING 
+    _run_id STRING COMMENT 'Job Run ID for pipeline auditing', 
+    _load_timestamp TIMESTAMP COMMENT 'Ingestion timestamp',  
+    _input_file STRING COMMENT 'Source file path'
 )
 USING DELTA
-PARTITIONED BY (YYYYMM)
+CLUSTER BY (YYYYMM)
 TBLPROPERTIES (
     'delta.enableChangeDataFeed' = 'true',
     'delta.autoOptimize.optimizeWrite' = 'true',

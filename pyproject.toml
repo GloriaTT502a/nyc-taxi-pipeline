@@ -4,55 +4,84 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nyc_taxi_pipeline"
-version = "0.1.0"            
+version = "0.1.3"
 description = "NYC Taxi Data Engineering Pipeline on Databricks"
 requires-python = ">=3.10"
 
+# =========================================
+#  PRODUCTION DEPENDENCIES (Databricks Runtime)
+# =========================================
 dependencies = [
-    "pyspark>=3.5.0,<3.6.0",               
-    "delta-spark==3.1.0", 
-    "pandas",             # 解决 No module named 'pandas'
-    "pyyaml",             # 解决 No module named 'yaml'
-    "python-dateutil",    # 解决 No module named 'dateutil'
-    "geopandas",          # 解决 No module named 'geopandas'
-    "h3>=3.7.0"                  # H3 空间缝合计算必需  
+    # core utils
+    "pyyaml==6.0.2",
+    "python-dateutil==2.9.0.post0",
+
+    # data stack
+    "pandas",
+    "numpy",
+
+    # spatial stack
+    "pyshp==2.3.1",
+    "shapely==2.0.6",
+    "pyproj==3.6.1"  
 ]
+
 
 [project.scripts]
-# 这行非常重要！它把 run_silver.py 定义为了一个可以被调用的入口
-run_silver = "nyc_taxi_pipeline.run_silver:main"
-run_build_zone_lookup = "nyc_taxi_pipeline.spatial.run_build_zone_lookup:main"
+run_bronze = "nyc_taxi_pipeline.jobs.run_bronze:main"
+run_silver = "nyc_taxi_pipeline.jobs.run_silver:main"
+run_build_zone_lookup = "nyc_taxi_pipeline.jobs.run_spatial:run"
 
-# 工业级 Best Practice：将本地调试和测试工具归为“开发专属配置”
+# =========================================
+#  DEV ENV (local only)
+# =========================================
 [project.optional-dependencies]
 dev = [
-    "databricks-connect>=15.1.0,<16.0.0",
+    "databricks-connect==18.2.1",
     "pytest>=7.0.0",
     "pytest-cov",
-    "chispa"
+    "chispa",
+    "pytest-dotenv", 
+
+
+    # ONLY for local heavy geo testing
+    "geopandas==0.14.4"
 ]
 
-# 🌟 CI 纯净测试环境（只有测试包，绝对不含 databricks-connect）
+# =========================================
+#  CI TEST ENV
+# =========================================
 test = [
-    "pytest>=7.0.0",
-    "pytest-cov",
-    "chispa", 
-    "databricks-sdk" 
+    "pyspark==3.5.1",
+    "delta-spark==3.1.0",
+    "pytest==8.2.2",
+    "pytest-cov==5.0.0",
+    "chispa==0.10.1",
+    "databricks-sdk==0.28.0"
 ]
 
+# =========================================
+# dbt ENV
+# =========================================
+dbt = [
+    "dbt-databricks==1.12.0",
+    "sqlfluff==3.0.0",
+    "sqlfluff-templater-dbt==3.0.0"
+]
+
+# =========================================
+# pytest config
+# =========================================
 [tool.pytest.ini_options]
 filterwarnings = [
-    # 解决问题 1: 屏蔽 Databricks Connect 释放句柄失败的非致命内部警告
     "ignore:ReleaseExecute failed with exception:UserWarning:pyspark.sql.connect.client.reattach",
-    
-    # 解决问题 2: 屏蔽 PySpark 内部 120 多个 distutils 弃用警告（刷屏元凶）
     "ignore:distutils Version classes are deprecated:DeprecationWarning:pyspark.sql.pandas.utils",
     "ignore:distutils Version classes are deprecated:DeprecationWarning:pyspark.sql.connect.utils"
 ]
+env_files = [".env"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-"nyc_taxi_pipeline.config" = ["*.yaml", "*.yml"]
-
+"nyc_taxi_pipeline.config" = ["*.yaml", "*.yml"] 

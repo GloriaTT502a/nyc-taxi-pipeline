@@ -1,42 +1,53 @@
-{{ config(
-    materialized='incremental',
-    unique_key='trip_id',
-    partition_by={'field': 'pickup_date', 'data_type': 'date'}
-) }}
+{{ 
+    config(
+        materialized='incremental',
+        unique_key='trip_id',
+        schema='core',
+        partition_by=['partition_year_month'],
+        meta={'zorder': 'pickup_location_id'},
+        tags=['marts', 'fact', 'core']
+    ) 
+}}
 
-with int_trips as (
+with cleaned_data as (
     select * from {{ ref('int_nyc_taxi__yellow_trips_cleaned') }}
     {% if is_incremental() %}
-    -- 增量逻辑：只处理上一批次之后处理过的数据
-    where meta_int_processed_at > (select max(meta_int_processed_at) from {{ this }})
+    where meta_int_processed_at > (select max(meta_dbt_fct_processed_at) from {{ this }})
     {% endif %}
 )
 
 select
-    -- ==========================================
-    -- 1. 业务主键
-    -- ==========================================
+    -- 1. 基础字段与主键
     trip_id,
-
-    -- ==========================================
-    -- 2. 维度外键 (Foreign Keys，严格遵循 _id 后缀规范)
-    -- ==========================================
-    -- 物理日期外键 (将 UTC 时间截断至天)
-    cast(date_trunc('day', pickup_at_utc) as date) as pickup_date_id,
-    cast(date_trunc('day', dropoff_at_utc) as date) as dropoff_date_id,
-    
-    -- 空间维度外键 (H3 索引本身就是极其优秀的主键)
-    pickup_h3_index as pickup_h3_id,
-    dropoff_h3_index as dropoff_h3_id,
-    
-    -- 业务维度外键
-    payment_type as payment_type_id,
-    rate_code_id,
+    taxi_type,
     vendor_id,
+    pickup_location_id,
+    dropoff_location_id,
+    
+    -- 报表字段 (原始时间戳)
+    pickup_at,
+    dropoff_at,
+    
+    -- 转换 ID (用于关联维度表 dim_date / dim_time)
+    cast(date_format(pickup_at, 'yyyyMMdd') as int) as pickup_date_id,
+    cast(date_format(pickup_at, 'HHmm') as int) as pickup_time_id,
+    cast(date_format(dropoff_at, 'yyyyMMdd') as int) as dropoff_date_id,
+    cast(date_format(dropoff_at, 'HHmm') as int) as dropoff_time_id,
+    
+    -- 算法用 UTC 时间
+    pickup_at_utc,
+    dropoff_at_utc,
+    
+    passenger_count,
+    trip_distance_miles,
+    trip_duration_minutes,
+    
+    -- 2. Dictionary Normalization
+    rate_code_id,
+    payment_type,
+    has_store_and_fwd,
 
-    -- ==========================================
-    -- 3. 财务度量值 (Financial Measures)
-    -- ==========================================
+    -- 3. Financial Soft Correction
     fare_amount,
     surcharge_amount,
     mta_tax_amount,
@@ -48,14 +59,27 @@ select
     cbd_congestion_fee_amount,
     total_amount,
 
-    -- ==========================================
-    -- 4. 运营度量值 (Operational Measures)
-    -- ==========================================
-    passenger_count,
-    trip_distance_miles,
-    trip_duration_minutes,
-    efficiency_score
+    -- 空间与退化维度
+    pickup_h3_index,
+    dropoff_h3_index,
+    is_pickup_fallback,
+    is_dropoff_fallback,
+    efficiency_score,
+    partition_year_month,
 
-from int_trips
--- 核心过滤：事实表只允许存在财务逻辑干净、合法的数据
-where is_valid_financial_logic = true
+    -- 4. Clean C: Soft Flagging
+    is_valid_financial_logic,
+
+    -- 5. Audit & Lineage
+    meta_bronze_run_id,
+    meta_silver_run_id,
+    meta_input_file_name,
+    meta_bronze_load_at,
+    meta_silver_processed_at,
+    meta_dbt_staging_invocation_id,
+    meta_staging_processed_at,
+    meta_dbt_int_invocation_id,
+    meta_int_processed_at,
+    current_timestamp() as meta_dbt_fct_processed_at
+
+from cleaned_data 

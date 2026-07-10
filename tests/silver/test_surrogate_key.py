@@ -12,12 +12,12 @@ def test_generate_trip_key(spark):
     显式声明 Schema 以规避全 None 字段导致的 PySpark 类型推导失败。
     """
     
-    # 1. 🌟 工业级最佳实践：显式定义元数据契约（Schema）
+    # 1. 工业级最佳实践：显式定义元数据契约（Schema）
     # 即使测试数据中包含大量 None，Spark 也能通过此配置直接在内存中完成对齐
     test_schema = StructType([
         StructField("vendor_id", StringType(), True),
-        StructField("pickup_datetime", TimestampType(), True),
-        StructField("dropoff_datetime", TimestampType(), True),
+        StructField("pickup_datetime_utc", TimestampType(), True),  
+        StructField("dropoff_datetime_utc", TimestampType(), True), 
         StructField("PULocationID", IntegerType(), True),
         StructField("DOLocationID", IntegerType(), True),
         StructField("passenger_count", IntegerType(), True),
@@ -32,10 +32,14 @@ def test_generate_trip_key(spark):
 
     # 2. 构建包含完全相同业务核心字段的测试数据集
     data = [
-        Row(vendor_id="1", pickup_datetime=datetime(2026, 5, 1), dropoff_datetime=datetime(2026, 5, 1),
+        Row(vendor_id="1", 
+            pickup_datetime_utc=datetime(2026, 5, 1),   
+            dropoff_datetime_utc=datetime(2026, 5, 1),  
             PULocationID=10, DOLocationID=20, passenger_count=1, trip_distance=2.5, total_amount=15.0,
             pickup_latitude=None, pickup_longitude=None, dropoff_latitude=None, dropoff_longitude=None),
-        Row(vendor_id="1", pickup_datetime=datetime(2026, 5, 1), dropoff_datetime=datetime(2026, 5, 1),
+        Row(vendor_id="1", 
+            pickup_datetime_utc=datetime(2026, 5, 1),   
+            dropoff_datetime_utc=datetime(2026, 5, 1),  
             PULocationID=10, DOLocationID=20, passenger_count=1, trip_distance=2.5, total_amount=15.0,
             pickup_latitude=None, pickup_longitude=None, dropoff_latitude=None, dropoff_longitude=None)
     ]
@@ -49,8 +53,7 @@ def test_generate_trip_key(spark):
     
     # 5. 严格验证断言
     # 验证生成的 trip_key 是确定性的（相同的输入必须产生绝对相同的哈希键）
-    assert rows[0]["trip_key"] == rows[1]["trip_key"], "❌ 错误：相同输入产生的代理键不一致！"
+    assert rows[0]["trip_key"] == rows[1]["trip_key"], "错误：相同输入产生的代理键不一致！"
     
     # 验证生成的哈希符合标准规格（SHA-256 算法生成的十六进制字符串固定为 64 位）
-    assert len(rows[0]["trip_key"]) == 64, f"❌ 错误：生成的 trip_key 长度为 {len(rows[0]['trip_key'])}，不符合标准 SHA-256 的 64 位规格！"
-    
+    assert len(rows[0]["trip_key"]) == 64, f"错误：生成的 trip_key 长度为 {len(rows[0]['trip_key'])}，不符合标准 SHA-256 的 64 位规格！"

@@ -4,35 +4,53 @@
         tags=['marts', 'dimension']
     ) 
 }}
+
 with hours as (
     select explode(sequence(0, 23)) as hour_of_day
 ),
 minutes as (
     select explode(sequence(0, 59)) as minute_of_hour
+),
+-- 将笛卡尔积转化为虚拟时间戳，以便极速调用原生格式化函数
+time_spine as (
+    select 
+        h.hour_of_day,
+        m.minute_of_hour,
+        -- 生成一个 1970-01-01 的虚拟时间戳，专门用来做字符串格式化
+        make_timestamp(1970, 1, 1, h.hour_of_day, m.minute_of_hour, 0) as dummy_ts
+    from hours h
+    cross join minutes m
 )
+
 select
-    -- 主键：HHMM 格式的整数，如 830, 1745
-    (h.hour_of_day * 100) + m.minute_of_hour as time_id,
+    (hour_of_day * 100) + minute_of_hour as time_id,
     
-    h.hour_of_day,
-    m.minute_of_hour,
+    hour_of_day as hour_24,
+    cast(date_format(dummy_ts, 'h') as int) as hour_12,
+    minute_of_hour,
+    date_format(dummy_ts, 'a') as am_pm,
     
-    -- 格式化为字符串用于展示 (如 '08:30')
-    lpad(cast(h.hour_of_day as string), 2, '0') || ':' || lpad(cast(m.minute_of_hour as string), 2, '0') as time_string,
+    date_format(dummy_ts, 'HH:mm') as time_string_24h,     -- '14:30'
+    date_format(dummy_ts, 'hh:mm a') as time_string_12h,   -- '02:30 PM'
     
-    -- 业务分段 (Dayparting)
     case 
-        when h.hour_of_day >= 6 and h.hour_of_day < 12 then 'Morning'
-        when h.hour_of_day >= 12 and h.hour_of_day < 16 then 'Afternoon'
-        when h.hour_of_day >= 16 and h.hour_of_day < 20 then 'Evening'
+        when hour_of_day >= 6 and hour_of_day < 12 then 'Morning'
+        when hour_of_day >= 12 and hour_of_day < 16 then 'Afternoon'
+        when hour_of_day >= 16 and hour_of_day < 20 then 'Evening'
         else 'Night'
     end as time_period,
     
-    -- 粗略的高峰期标记 (仅看时钟时间，结合 dim_date.is_weekend 一起用才完美)
     case 
-        when h.hour_of_day in (7, 8, 9) then 'Morning Rush'
-        when h.hour_of_day in (16, 17, 18, 19) then 'Evening Rush'
+        when hour_of_day >= 6 and hour_of_day < 12 then 1
+        when hour_of_day >= 12 and hour_of_day < 16 then 2
+        when hour_of_day >= 16 and hour_of_day < 20 then 3
+        else 4
+    end as time_period_sort_key, -- BI 工具根据此字段对 time_period 进行正确排序
+    
+    case 
+        when hour_of_day in (7, 8, 9) then 'Morning Rush'
+        when hour_of_day in (16, 17, 18, 19) then 'Evening Rush'
         else 'Off-Peak'
     end as peak_period_type
-from hours h
-cross join minutes m
+
+from time_spine 

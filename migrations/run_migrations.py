@@ -2,7 +2,7 @@ import os
 import glob 
 from pyspark.sql import SparkSession 
 
-from common.logger import get_logger 
+from nyc_taxi_pipeline.observability.app_logging import get_logger 
 
 # Get current script logger 
 logger = get_logger(__name__)

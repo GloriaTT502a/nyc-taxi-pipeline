@@ -1,83 +1,80 @@
-{{
+{{ 
     config(
         materialized='table', 
         tags=['marts', 'finance', 'variance_analysis']
     )
 }}
 
--- 1. basic merge: calculate trip, revenue by month
-with monthly_segment_metrics as (
+-- 1. 基础聚合：使用维度表关联，确保财务口径一致
+with base_metrics as (
     select 
-        date_trunc('month', pickup_at) as trip_month, 
+        date_trunc('month', f.pickup_at) as trip_month, 
+        
+        -- 通过关联维度表获取名称，彻底消除硬编码
+        coalesce(d.rate_code_name, 'Unknown') as rate_code_name, 
 
-        case rate_code_id
-            when 1 then '1-Standard Rate'
-            when 2 then '2-JFK Airport'
-            when 3 then '3-Newark Airport'
-            when 4 then '4-Nassau or Westchester'
-            when 5 then '5-Negotiated Fare'
-            when 6 then '6-Group Ride'
-            else 'Unknown'
-        end as rate_code_name, 
-
-        sum(total_amount) as segment_revenue,
-        count(trip_id) as segment_trip_count
-    from {{ ref('int_nyc_taxi__yellow_trips_cleaned') }}
-    where is_valid_financial_logic = true -- 🌟 只取财务上自洽的健康数据
+        sum(f.total_amount) as segment_revenue,
+        count(f.trip_id) as segment_trip_count
+    from {{ ref('fct_nyc_taxi_trips') }} f
+    left join {{ ref('dim_rate_code') }} d 
+        on f.rate_code_id = d.rate_code_id
+    where f.is_valid_financial_logic = true 
     group by 1, 2
 ), 
 
--- 2. time window: use LAG function to get revenue from last month 
-lagged_metrics as (
+-- 2. 窗口计算：获取上月营收及当月总营收
+window_metrics as (
     select 
-        trip_month, 
-        rate_code_name, 
-        segment_revenue, 
-        segment_trip_count, 
+        *,
+        -- 获取上月同维度营收
         lag(segment_revenue) over (
             partition by rate_code_name 
             order by trip_month 
-        ) as prev_month_segment_revenue 
-    from monthly_segment_metrics 
+        ) as prev_month_revenue,
+        
+        -- 计算当月总营收（所有 rate_code 的总和，用于计算贡献度）
+        sum(segment_revenue) over (
+            partition by trip_month
+        ) as total_current_month_revenue,
+
+        -- 计算上月总营收（用于分母计算）
+        sum(lag(segment_revenue) over (
+            partition by rate_code_name 
+            order by trip_month 
+        )) over (
+            partition by trip_month
+        ) as total_prev_month_revenue
+    from base_metrics 
 ), 
 
--- 3. Calculate the total monthly revenue
-total_prev_month_metrics as (
-    select 
-        trip_month, 
-        sum(prev_month_segment_revenue) as total_prev_month_revenue 
-    from lagged_metrics 
-    group by 1 
-), 
-
--- 4. Calculate variance and contribution 
+-- 3. 差异分析：计算方差、增长率及对整体的贡献
 variance_calculation as (
     select 
-        l.trip_month, 
-        l.rate_code_name, 
+        trip_month,
+        rate_code_name,
+        segment_revenue,
+        prev_month_revenue,
+        
+        -- 绝对差异
+        (segment_revenue - coalesce(prev_month_revenue, 0)) as revenue_variance_amount, 
 
-        l.segment_revenue, 
-        l.prev_month_segment_revenue, 
-        (l.segment_revenue - coalesce(l.prev_month_segment_revenue, 0)) as revenue_variance_amount, 
-
-        -- Segment Growth Rate 
+        -- MoM 增长率
         case 
-            when l.prev_month_segment_revenue = 0 or l.prev_month_segment_revenue is null then null 
-            else (l.segment_revenue - l.prev_month_segment_revenue) / l.prev_month_segment_revenue 
+            when coalesce(prev_month_revenue, 0) = 0 then null 
+            else (segment_revenue - prev_month_revenue) / prev_month_revenue 
         end as segment_mom_growth_rate, 
 
-        -- Contribution to Overall Growth 
+        -- 对整体增长的贡献度
         case 
-            when t.total_prev_month_revenue = 0 or t.total_prev_month_revenue is null then null 
-            else (l.segment_revenue - coalesce(l.prev_month_segment_revenue, 0)) / t.total_prev_month_revenue 
+            when coalesce(total_prev_month_revenue, 0) = 0 then null 
+            else (segment_revenue - coalesce(prev_month_revenue, 0)) / total_prev_month_revenue 
         end as contribution_to_total_growth 
-    
-    from lagged_metrics l 
-    left join total_prev_month_metrics t 
-        on l.trip_month = t.trip_month 
+    from window_metrics
 ) 
 
-select * from variance_calculation 
--- fill out the first month record due to without the previous month record 
-where prev_month_segment_revenue is not null 
-order by trip_month desc, revenue_variance_amount desc 
+-- 4. 最终输出
+select * 
+from variance_calculation 
+-- 过滤掉没有对比基准的第一个月（即没有上月数据的月份）
+where prev_month_revenue is not null 
+order by trip_month desc, revenue_variance_amount desc
