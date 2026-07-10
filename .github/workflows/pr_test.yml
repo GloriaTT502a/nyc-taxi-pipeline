@@ -109,16 +109,16 @@ jobs:
         # dummy values
         # 防止 env_var 报错
 
-        DATABRICKS_HOST: "https://dummy.cloud.databricks.com"
+        DATABRICKS_HOST: "https://127.0.0.1"
 
-        DATABRICKS_TOKEN: "dummy"
+        DATABRICKS_TOKEN: "mock_token_prevent_sdk_fallback"
 
-        DATABRICKS_HTTP_PATH: "/sql/1.0/warehouses/dummy"
+        DATABRICKS_HTTP_PATH: "/mock"
 
 
       run: |
-
-        dbt parse
+        # 核心：使用 --no-introspect 禁止适配器发送 SHOW CATALOGS 探测命令
+        dbt parse --no-introspect
 
 
 
@@ -128,7 +128,7 @@ jobs:
 
       run: |
 
-        sqlfluff lint models/ 
+        sqlfluff lint models/ --dialect databricks --templater dbt 
 
 # dbt CLOUD integration (Pull Request ONLY)
 
@@ -155,16 +155,13 @@ jobs:
         python-version-file: ".python-version"
         cache: 'pip'
 
-    - name: Install dbt 
+    - name: Install dbt & Install dbt deps
+      # 合并安装步骤，确保进入云端交互前所有依赖已就绪
       run: | 
         python -m pip install --upgrade pip
         pip install -e ".[dbt]"
-
-
-    - name: Run dbt tests
-      working-directory: ./dbt_transform
-      run: |
-        dbt test --target ci_pipeline
+        cd dbt_transform
+        dbt deps 
 
     # -------------------------------
     # 网络检查
@@ -191,7 +188,6 @@ jobs:
       working-directory: ./dbt_transform
       timeout-minutes: 15
       run: |
-        dbt deps
         dbt debug --target ci_pipeline
         # dbt 的 Unit Test 需要连接云端解析特定的 Databricks SQL 方言
         dbt test --target ci_pipeline --select "test_type:unit" 
@@ -251,6 +247,8 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -e ".[dbt]" 
+        cd dbt_transform
+        dbt deps 
 
     - name: Production Connectivity Check
 
@@ -275,7 +273,6 @@ jobs:
     - name: Run Full Production Build
       working-directory: ./dbt_transform
       run: |
-        dbt deps
         # Production Environment 
         dbt debug --target prod_pipeline
         dbt build --target prod_pipeline 
