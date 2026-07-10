@@ -83,12 +83,12 @@ jobs:
       env: 
         DBT_PROFILES_DIR: .
         # 编译阶段不需要真实 Serverless，随便给个假地址即可验证 Jinja 语法
-        DATABRICKS_HOST: "https://mock.databricks.com"
-        DATABRICKS_TOKEN: "mock_token"
-        DATABRICKS_HTTP_PATH: "mock/path" 
+        DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+        DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        DATABRICKS_HTTP_PATH: ${{ secrets.DATABRICKS_HTTP_PATH }} 
       run: | 
         dbt deps 
-        dbt compile 
+        dbt compile --target dev 
 
 # dbt CLOUD integration (Pull Request ONLY)
 
@@ -112,7 +112,6 @@ jobs:
         cache: 'pip'
 
     - name: Install dbt 
-      working-directory: ./dbt_transform 
       run: | 
         python -m pip install --upgrade pip
         pip install -e ".[dbt]"
