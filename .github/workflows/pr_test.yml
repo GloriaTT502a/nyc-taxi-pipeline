@@ -6,9 +6,15 @@ on:
   pull_request:
     branches: [ "main" ]
 
+# 防止重复 PR 浪费 Databricks Warehouse
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   pyspark-unit-tests:
     runs-on: ubuntu-22.04
+    timeout-minutes: 30
 
     steps:
     - name: Checkout code
@@ -57,17 +63,21 @@ jobs:
         DATABRICKS_TOKEN: "mock_token"
       run: |
         # 运行全量单元测试，并关闭本地缓存提供者，确保每次 CI 运行都是绝对干净的冷启动
-        python -m pytest tests/ -v -p no:cacheprovider
+        pytest tests/ -v -p no:cacheprovider
 
     # ==========================================
     # 第二防线：dbt 逻辑与集成测试
     # ==========================================
   dbt-offline-checks: 
     runs-on: ubuntu-22.04 
-    steps:
-    - uses: actions/checkout@v4 
+    timeout-minutes: 15
 
-    - uses: actions/setup-python@v5  
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4 
+
+    - name: Setup Python 3.12
+      uses: actions/setup-python@v5  
       with: 
         python-version-file: ".python-version" 
         cache: 'pip' 
@@ -78,19 +88,47 @@ jobs:
         # Install deps for dbt in pyproject ONLY
         pip install -e ".[dbt]"
 
+    - name: dbt deps
 
-    - name: dbt Compile (NO CLOUD) 
-      working-directory: ./dbt_transform 
-      env: 
+      working-directory: ./dbt_transform
+
+      run: |
+
+        dbt deps
+
+
+    - name: dbt parse (offline)
+
+      working-directory: ./dbt_transform
+
+      env:
+
         DBT_PROFILES_DIR: .
-        # 编译阶段不需要真实 Serverless，随便给个假地址即可验证 Jinja 语法
-        DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
-        DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
-        DATABRICKS_HTTP_PATH: ${{ secrets.DATABRICKS_HTTP_PATH }} 
-      run: | 
-        dbt deps 
-        dbt debug --target dev
-        dbt compile --target dev 
+
+
+        # dummy values
+        # 防止 env_var 报错
+
+        DATABRICKS_HOST: "https://dummy.cloud.databricks.com"
+
+        DATABRICKS_TOKEN: "dummy"
+
+        DATABRICKS_HTTP_PATH: "/sql/1.0/warehouses/dummy"
+
+
+      run: |
+
+        dbt parse
+
+
+
+    - name: SQLFluff lint
+
+      working-directory: ./dbt_transform
+
+      run: |
+
+        sqlfluff lint models/ 
 
 # dbt CLOUD integration (Pull Request ONLY)
 
@@ -99,6 +137,8 @@ jobs:
     needs: [pyspark-unit-tests, dbt-offline-checks] 
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-22.04 
+    timeout-minutes: 60
+
     env: 
       DBT_PROFILES_DIR: .
       DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
@@ -106,9 +146,11 @@ jobs:
       DATABRICKS_HTTP_PATH: ${{ secrets.DATABRICKS_HTTP_PATH }}
 
     steps: 
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-    - uses: actions/setup-python@v5
+    - name: Setup Python 3.12
+      uses: actions/setup-python@v5
       with:
         python-version-file: ".python-version"
         cache: 'pip'
@@ -119,8 +161,35 @@ jobs:
         pip install -e ".[dbt]"
 
 
+    - name: Run dbt tests
+      working-directory: ./dbt_transform
+      run: |
+        dbt test --target ci_pipeline
+
+    # -------------------------------
+    # 网络检查
+    # -------------------------------
+    - name: Test Databricks Workspace Connectivity
+
+      timeout-minutes: 2 
+
+      run: |
+
+        echo "Testing Databricks Host..."
+
+        echo $DATABRICKS_HOST
+
+
+        curl \
+          --connect-timeout 10 \
+          --max-time 20 \
+          -I \
+          $DATABRICKS_HOST  
+
+    
     - name: Connection Check & Unit Tests
       working-directory: ./dbt_transform
+      timeout-minutes: 15
       run: |
         dbt deps
         dbt debug --target ci_pipeline
@@ -139,8 +208,8 @@ jobs:
 
     - name: Run Slim CI Build
       working-directory: ./dbt_transform
+      timeout-minutes: 30
       run: |
-        dbt deps 
         if [ -f "./prod-state/manifest.json" ]; then
           dbt build \
             --target ci_pipeline \
@@ -149,6 +218,8 @@ jobs:
             --defer
         else
           # 退化为仅运行数据测试，确保不执行全库重构
+          echo "No production state found" 
+          echo "Running fallback tests" 
           dbt test --target ci_pipeline --exclude "test_type:unit"
         fi 
 
@@ -159,6 +230,7 @@ jobs:
     # Need basic test 
     needs: [pyspark-unit-tests, dbt-offline-checks] 
     runs-on: ubuntu-22.04 
+    timeout-minutes: 90
     env: 
       DBT_PROFILES_DIR: .
       DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
@@ -166,9 +238,11 @@ jobs:
       DATABRICKS_HTTP_PATH: ${{ secrets.DATABRICKS_HTTP_PATH }} 
 
     steps: 
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-    - uses: actions/setup-python@v5
+    - name: Setup Python 3.12
+      uses: actions/setup-python@v5
       with:
         python-version-file: ".python-version"
         cache: 'pip' 
@@ -178,11 +252,32 @@ jobs:
         python -m pip install --upgrade pip
         pip install -e ".[dbt]" 
 
+    - name: Production Connectivity Check
+
+
+      timeout-minutes: 2
+
+
+      run: |
+
+
+        curl \
+
+          --connect-timeout 10 \
+
+          --max-time 20 \
+
+          -I \
+
+          $DATABRICKS_HOST
+    
+    
     - name: Run Full Production Build
       working-directory: ./dbt_transform
       run: |
         dbt deps
         # Production Environment 
+        dbt debug --target prod_pipeline
         dbt build --target prod_pipeline 
 
     - name: Upload latest manifest.json

@@ -5,19 +5,18 @@ from pyspark.sql import SparkSession
 from pyspark.sql import types as T
 from pyspark.sql import functions as F
 
-# 🌟 修复 1: 严格遵照扁平化路径，去掉 src. 前缀
-# (CANONICAL_SCHEMA 如果在你别的模块，请相应调整导入路径，比如 from bronze.schema import CANONICAL_SCHEMA)
+# 修复 1: 严格遵照扁平化路径，去掉 src. 前缀
 from nyc_taxi_pipeline.bronze.loader import TaxiBronzeLoader 
 from nyc_taxi_pipeline.bronze.transformations import normalize_dataframe
-# 假设 CANONICAL_SCHEMA 也在 loader 里，如果不是请修改
-from nyc_taxi_pipeline.bronze.schema import CANONICAL_SCHEMA 
+
+from nyc_taxi_pipeline.contracts.bronze_schema import BRONZE_SCHEMA 
 from nyc_taxi_pipeline.config.settings import LINEAGE_COLUMN, RUN_ID_COLUMN
 
 
 class TestBronzeUnitLogic:
     
     def test_generate_target_paths(self, spark: SparkSession):
-        # 🌟 修复 2: 移除传入的 base_path="/tmp/test/"
+        # 修复 2: 移除传入的 base_path="/tmp/test/"
         # 让它自动回退读取 config/settings.py 里配置的默认路径 (/Volumes/nyc/default/)
         loader = TaxiBronzeLoader(spark=spark)
         
@@ -77,7 +76,7 @@ class TestBronzeUnitLogic:
         # 4. 验证 Schema 完全对齐 CANONICAL_SCHEMA 定义
         actual_schema_dict = {f.name: type(f.dataType) for f in normalized_df.schema}
         
-        for expected_name, expected_type in CANONICAL_SCHEMA:
+        for expected_name, expected_type in BRONZE_SCHEMA:
             assert expected_name in actual_schema_dict, f"Missing target column: {expected_name}"
             assert actual_schema_dict[expected_name] == type(expected_type), f"Type mismatch for {expected_name}"
             
