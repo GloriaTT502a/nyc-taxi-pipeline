@@ -117,7 +117,6 @@ jobs:
 
 
       run: |
-        # 核心：使用 --no-introspect 禁止适配器发送 SHOW CATALOGS 探测命令
         dbt parse 
 
 
