@@ -66,8 +66,8 @@ test = [
 # =========================================
 dbt = [
     "dbt-databricks==1.12.0",
-    "sqlfluff==3.0.0",
-    "sqlfluff-templater-dbt==3.0.0"
+    "sqlfluff>=3.0.0",
+    "sqlfluff-templater-dbt>=3.0.0"
 ]
 
 # =========================================

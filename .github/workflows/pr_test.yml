@@ -126,10 +126,15 @@ jobs:
     - name: SQLFluff lint
 
       working-directory: ./dbt_transform
-
+      env:
+        DBT_PROFILES_DIR: .
+        DATABRICKS_HOST: "https://127.0.0.1"
+        DATABRICKS_TOKEN: "mock_token"
+        DATABRICKS_HTTP_PATH: "/mock"
+        DATABRICKS_AUTH_TYPE: "pat"
       run: |
-
-        sqlfluff lint models/ --dialect databricks --templater dbt 
+        sqlfluff lint models/ --dialect databricks --templater dbt
+ 
 
 # dbt CLOUD integration (Pull Request ONLY)
 
