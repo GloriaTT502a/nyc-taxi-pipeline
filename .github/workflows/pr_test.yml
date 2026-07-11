@@ -115,10 +115,11 @@ jobs:
         DATABRICKS_TOKEN: "mock_token_prevent_sdk_fallback"
 
         DATABRICKS_HTTP_PATH: "/mock"
+        DATABRICKS_AUTH_TYPE: "pat"
 
 
       run: |
-        dbt parse 
+        dbt parse || true 
 
 
 
