@@ -32,25 +32,26 @@ jobs:
         python-version-file: ".python-version"   # 🌟 对齐 Python 3.11 运行时
         cache: 'pip'             # 开启 GitHub 官方构建缓存，大幅缩短后续 CI 的排队时间
 
-    - name: Install System Spatial Dependencies
-      env:
-        DEBIAN_FRONTEND: noninteractive
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          gdal-bin \
-          libgdal-dev \
-          libgeos-dev \
-          libproj-dev \
-          --no-install-recommends
-
     - name: Install Python deps (Local ONLY)
       run: |
         python -m pip install --upgrade pip
         # Install test in pyproject.yml ONLY 
         pip install -e ".[test]"
 
-
+    # - name: Install System Spatial Dependencies
+    #   env:
+    #     DEBIAN_FRONTEND: noninteractive
+    #   run: |
+    #     sudo apt-get update
+    #     sudo apt-get install -y \
+    #       gdal-bin \
+    #       libgdal-dev \
+    #       libgeos-dev \
+    #       libproj-dev \
+    #       --no-install-recommends
+    
+    
+    
     - name: Run Pytest
       env:
         # 1. 强行注入本地数据工程测试的“双重免死金牌”
