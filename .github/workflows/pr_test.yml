@@ -181,7 +181,7 @@ jobs:
 
       working-directory: ./dbt_transform
       
-      run: |
+      run: | 
         sqlfluff lint models/ --dialect databricks --templater dbt
  
 
