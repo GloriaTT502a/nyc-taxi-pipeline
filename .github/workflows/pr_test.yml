@@ -273,15 +273,7 @@ jobs:
       run: |
 
 
-        curl \
-
-          --connect-timeout 10 \
-
-          --max-time 20 \
-
-          -I \
-
-          $DATABRICKS_HOST
+        curl --connect-timeout 10 --max-time 20 -I "$DATABRICKS_HOST"
     
     
     - name: Run Full Production Build
