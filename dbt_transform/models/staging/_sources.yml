@@ -14,7 +14,7 @@ sources:
 
     tables:                    
       - name: yellow_trips
-        identifier: slv_yellow_nyc_taxi # 👈 必须比 - name 往里多缩进 2 个空格！告诉 dbt 真实的物理表名
+        identifier: slv_yellow_nyc_taxi 
         description: "Raw data of yellow taxi"
 
         # The column used to identify freshness 
@@ -31,10 +31,15 @@ sources:
             tests: 
               - not_null
 
-          - name: vendor_id 
-            tests: 
-              - accepted_values:
-                  arguments: 
-                    values: ['1', '2' , 'CMT', 'VTS', 'DDS'] 
-                  config: 
-                    severity: warn
+      - name: taxi_zone_h3
+        identifier: slv_taxi_zone_h3
+        columns:
+          - name: LocationID  
+            tests:
+              - not_null
+              - unique
+
+          - name: zone        
+            tests:
+              - not_null
+

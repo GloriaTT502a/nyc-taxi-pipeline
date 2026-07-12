@@ -1,8 +1,11 @@
 # tests/conftest.py
 import pytest
 import os
+os.environ["SPARK_LOCAL_REMOTE"] = "1" 
+
 import sys
 import warnings 
+import logging
 
 # 1. 动态注入 src 路径，确保 pytest 在任何目录下执行都能正确 import 项目模块
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
@@ -17,8 +20,13 @@ def spark():
     测试专用的全局共享 SparkSession。
     职责解耦：完全托管给业务通用的 spark_utils 处理环境路由。
     """
+    logging.getLogger("py4j.clientserver").setLevel(logging.CRITICAL) 
+    
     # 2. 统一调用工具类获取最适合当前环境的 SparkSession
-    spark_session = get_spark_session(app_name="nyc-taxi-pipeline-pytest")
+    # 默认使用 local，除非在本地终端 export APP_ENV=databricks
+    env = os.environ.get("APP_ENV", "local")
+    
+    spark_session = get_spark_session(runtime_env=env, app_name="nyc-taxi-pipeline-pytest")
 
     yield spark_session 
 

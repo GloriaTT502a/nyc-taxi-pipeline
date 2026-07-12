@@ -1,0 +1,36 @@
+# models/observability/data_quality.yml
+
+version: 2
+
+models:
+  - name: profile_stg_nyc_taxi__yellow_trips
+    description: "记录 STG 层数据的健康度指标，用于识别数据质量漂移"
+    columns:
+      - name: column_name
+        description: "被监控的字段名"
+      
+      - name: not_null_proportion
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0.95  # 对应原逻辑：空值率 < 5% 即 非空率 > 95%
+                max_value: 1.0 
+              config:
+                where: "column_name in ('vendor_id', 'pickup_at', 'dropoff_at', 'pickup_at_utc', 'trip_distance_miles', 'fare_amount', 'total_amount')"
+
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0.90
+                max_value: 1.0
+              config:
+                where: "column_name = 'passenger_count'" 
+
+
+      - name: distinct_count
+        description: "该列的唯一值个数"
+        tests:
+          # 监控 ID 类字段的唯一性趋势
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments: 
+                min_value: 1
+                max_value: 100000000 # 根据实际 NYC Taxi 数据规模设置

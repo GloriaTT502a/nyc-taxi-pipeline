@@ -1,6 +1,16 @@
 bundle:
   name: nyc-taxi-pipeline
 
+
+variables:
+  runtime_env:
+    description: "The target execution environment"
+    default: "databricks"
+  catalog:
+    description: "The target Unity Catalog name (e.g., nyc_dev, nyc_prod)"
+    default: "dev"
+
+
 sync:
   include:
     - src/**
@@ -17,8 +27,46 @@ sync:
     - spark-warehouse/**
     - .snapshots/**
 
+artifacts:
+  default:
+    type: whl
+    build: python -m build
+    path: .
+
 resources:
   jobs:
+    # ==========================================
+    # 1. Bronze Pipeline 
+    # ========================================== 
+    run_bronze_pipeline:
+      name: "[${bundle.target}] NYC Taxi Bronze Run"
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "3"
+            dependencies:
+              - ./dist/*.whl 
+      
+      tasks:
+        - task_key: bronze_ingestion
+          environment_key: default
+          python_wheel_task:
+            package_name: nyc_taxi_pipeline
+            entry_point: run_bronze 
+            parameters:
+              - "--start-month"
+              - "201001"
+              - "--end-month"
+              - "201002"
+              # Env Injection 
+              - "--env"
+              - "${var.runtime_env}"
+              - "--catalog"
+              - "${var.catalog}" 
+    
+    # ==========================================
+    # 2. Silver Pipeline 
+    # ==========================================
     run_silver_pipeline:
       name: "[${bundle.target}] NYC Taxi Silver Run"
 
@@ -39,17 +87,55 @@ resources:
           python_wheel_task:
             package_name: nyc_taxi_pipeline
             entry_point: run_silver
+            parameters:
+              - "--env"
+              - "${var.runtime_env}" 
+              - "--catalog"
+              - "${var.catalog}"
+
+    # ==========================================
+    # 3. Spatial Pipeline (空间网格构建)
+    # ========================================== 
+    run_spatial_pipeline:
+      name: "[${bundle.target}] NYC Taxi Spatial Build"
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "3"
+            dependencies:
+              - ./dist/*.whl
+         
+      tasks:
+        - task_key: spatial_processing
+          environment_key: default
+          python_wheel_task:
+            package_name: nyc_taxi_pipeline
+            entry_point: run_build_zone_lookup
+            parameters:
+              - "--env"
+              - "${var.runtime_env}" 
+              - "--catalog"
+              - "${var.catalog}"
 
 targets:
   dev:
     mode: development
     default: true
 
+    variables:
+      runtime_env: "dev"
+      catalog: "nyc"
     workspace:
       host: https://dbc-f9d1ed70-8f10.cloud.databricks.com
+      #artifact_path: /Volumes/nyc/dev/bundle_assets/${workspace.current_user.userName}/${bundle.name}
+      artifact_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
 
   prod:
     mode: production
-
+    variables:
+      runtime_env: "prod"
+      catalog: "nyc"
     workspace:
       host: https://dbc-f9d1ed70-8f10.cloud.databricks.com 
+      artifact_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+

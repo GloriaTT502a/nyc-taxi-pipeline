@@ -1,7 +1,13 @@
+-- models/marts/core/int_nyc_taxi__yellow_trips_cleaned.sql
+
 {{ 
     config(
-        tags=['intermediate', 'nyc_yellow_taxi'],
-        enabled=true
+        materialized='incremental',
+        unique_key='trip_id',
+        meta={
+            'zorder': 'dq_error_type'
+        },
+        tags=['audit', 'dq']
     ) 
 }}
 
@@ -12,7 +18,11 @@ with staging_trips as (
 select
     -- 1. 基础字段透传
     trip_id,
-    vendor_id,
+    taxi_type, 
+    case 
+        when vendor_id in ('1', '2', '6', 'CMT', 'VTS', 'DDS') then vendor_id
+        else '99' -- 修正：将 8, 33, 99, 128 等所有非法值统一归化为 -1 (未知成员)
+    end as vendor_id,
     pickup_location_id,
     dropoff_location_id,
     pickup_at,
@@ -24,26 +34,24 @@ select
     trip_duration_minutes,
     
     -- ==========================================
-    -- 2. Clean A: Dictionary Normalization)
+    -- 2. Clean A: Dictionary Normalization
     -- ==========================================
-    --  rate_code_id 
     case 
         when rate_code_id in (1, 2, 3, 4, 5, 6) then rate_code_id
-        else null -- 将 8, 33, 99, 128 等所有非法值统一归化为 NULL
+        else -1 -- 修正：将 8, 33, 99, 128 等所有非法值统一归化为 -1 (未知成员)
     end as rate_code_id,
     
-    -- payment_type 已经在 staging 层用宏/seed 转成了 1-6 的标准 INT
     payment_type,
     has_store_and_fwd,
 
     -- ==========================================
-    -- 3. Clean B：Financial Soft Correctio)
+    -- 3. Clean B: Financial Soft Correction
     -- ==========================================
     fare_amount,
     surcharge_amount,
     mta_tax_amount,
     
-    -- There is not tip for cash payment type 
+    -- 现金支付不记录小费，强制归零修正
     case 
         when payment_type = 2 then cast(0.00 as decimal(9,2))
         else tip_amount
@@ -56,27 +64,26 @@ select
     cbd_congestion_fee_amount,
     total_amount,
 
-    -- Other features 
+    -- 空间与退化维度透传
     pickup_h3_index,
     dropoff_h3_index,
     is_pickup_fallback,
     is_dropoff_fallback,
     efficiency_score,
-    partition_year_month,
+    partition_year_month,  
 
     -- ==========================================
-    -- 4. Clean C：Soft Flagging
+    -- 4. Clean C: Soft Flagging (配置驱动设计)
     -- ==========================================
-    -- Flag the incorrect records 
+    -- 动态调用业务校验规则，彻底解耦硬编码
     case 
-        when mta_tax_amount not in (0.00, 0.50) 
-             and not (mta_tax_amount = -0.50 and payment_type in (4, 6))
-        then false
-        
-        else true
+        when {{ get_dq_rule('mta_tax_validation') }} then true
+        else false
     end as is_valid_financial_logic, 
 
-    -- Audit columns 
+    -- ==========================================
+    -- 5. Audit & Lineage
+    -- ==========================================
     meta_bronze_run_id, 
     meta_silver_run_id, 
     meta_input_file_name, 
@@ -85,9 +92,8 @@ select
     meta_dbt_staging_invocation_id, 
     meta_staging_processed_at, 
     
-    -- Add intermediate layer audit columns 
+    -- 添加当前层的运行元数据
     '{{ invocation_id }}' as meta_dbt_int_invocation_id,
     {{ current_timestamp() }} as meta_int_processed_at
-
 
 from staging_trips

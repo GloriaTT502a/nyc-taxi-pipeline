@@ -16,8 +16,8 @@ unit_tests:
 
     expect: 
       rows: 
-        - {payment_type: 1}
-        - {payment_type: 2}
-        - {payment_type: 6}
-        - {payment_type: 5} 
-        - {payment_type: 3}
+        - {payment_type: '1'}
+        - {payment_type: '2'}
+        - {payment_type: '6'}
+        - {payment_type: '5'} 
+        - {payment_type: '3'}

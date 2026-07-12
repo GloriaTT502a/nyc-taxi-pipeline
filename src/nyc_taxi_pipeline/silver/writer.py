@@ -1,62 +1,62 @@
+# src/nyc_taxi_pipeline/silver/writer.py
+
 import logging 
+import uuid
 from delta.tables import DeltaTable 
 from pyspark.sql import DataFrame, SparkSession 
 
+from nyc_taxi_pipeline.metadata.business_columns import COL_TRIP_KEY 
+
 logger = logging.getLogger(__name__) 
 
-class SilverDeltaWriter: 
+class SilverDeltaWriter:
+    """
+    Industrial-grade Silver Layer Delta Writer:
+    1. Uses declarative SQL Merge to adapt to Liquid Clustering physical storage.
+    2. Removes all hardcoded physical partitioning, allowing Databricks 
+       to automatically optimize I/O and data skipping.
+    """ 
     @staticmethod 
-    def upsert(spark: SparkSession, df: DataFrame, table_name: str, partition_col: str = "YYYYMM"): 
-        # Check if table exists 
-        table_exists = spark.catalog.tableExists(table_name) 
-
-        # Check if table empty 
-        is_empty = True 
-
-        if table_exists: 
-            is_empty = spark.table(table_name).limit(1).count() == 0 
-
-        # If table doesn't exist or is empty 
-        if not table_exists or is_empty: 
-            logger.info(f"table {table_name} is empty or doesn't exist. Process initial write") 
-
+    def upsert(spark: SparkSession, df: DataFrame, table_name: str) -> None: 
+        # 1. Handle initial write for new tables
+        if not spark.catalog.tableExists(table_name):
+            logger.info(f"Target table {table_name} does not exist, performing initial full write...")
             (
                 df.write
-                    .format("delta") 
-                    .mode("overwrite") 
-                    .partitionBy(partition_col)
-                    .saveAsTable(table_name)
+                .format("delta")
+                .mode("overwrite")
+                .saveAsTable(table_name)
             )
-            return 
-        
-        # Dynamic Partition (DPP) 
-        distinct_partitions = [row[partition_col] for row in df.select(partition_col).distinct().collect()]
-        if not distinct_partitions: 
-            return 
-        
-        partition_values_str = ", ".join([f"'{p}'" if isinstance(p, str) else str(p) for p in distinct_partitions]) 
+            return
 
-        merge_condition = (
-            f"t.{partition_col} = s.{partition_col} AND " 
-            f"t.{partition_col} IN ({partition_values_str}) AND "
-            f"t.trip_key = s.trip_key"
-        )
+        # 2. Prepare source data view
+        # Using a hashed view name to prevent collisions during concurrent job runs
+        view_name = f"source_updates_{uuid.uuid4().hex}"
+        df.createOrReplaceTempView(view_name)
 
-        logger.info(f"Process Merge, dynamic partition: [{partition_values_str}]")
-        
-
-        df.createOrReplaceTempView("source_updates") 
-
+        # 3. Construct native SQL Merge statement
+        # No manual partition calculation required; Databricks engine automatically 
+        # utilizes Liquid Clustering indices for optimized data skipping.
         merge_query = f"""
-        MERGE INTO {table_name} AS t
-        USING source_updates AS s
-        ON {merge_condition}
-        WHEN MATCHED THEN UPDATE SET *
-        WHEN NOT MATCHED THEN INSERT *
-        """ 
-        
-        spark.sql(merge_query) 
+            MERGE INTO {table_name} AS target
+            USING {view_name} AS source
+            ON target.{COL_TRIP_KEY} = source.{COL_TRIP_KEY}
+            WHEN MATCHED THEN 
+                UPDATE SET *
+            WHEN NOT MATCHED THEN 
+                INSERT *
+        """
 
-        logger.info(f"Upsert SQL executed successfully on {table_name}")
-        
+        try:
+            logger.info(f"Executing native SQL Merge write: {table_name}")
+            spark.sql(merge_query)
+            logger.info("Upsert SQL executed successfully.")
+        except Exception as e:
+            logger.error(f"SQL Merge failed! Possible schema mismatch or drift: {e}")
+            raise e
+        finally:
+            try:
+                spark.catalog.dropTempView(view_name)
+            except Exception:
+                pass  
         

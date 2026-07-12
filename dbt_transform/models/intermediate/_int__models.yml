@@ -1,0 +1,41 @@
+version: 2
+
+models:
+  - name: int_nyc_taxi__yellow_trips_cleaned
+    description: "Intermediate layer: Financial logic cleansing and invalid data soft-flagging."
+    columns:
+      # 1. 确保主键在经过逻辑处理后依然是唯一的，没有发生意外的笛卡尔积发散
+      - name: trip_id
+        tests:
+          - unique
+          - not_null
+
+      # 2. 验证财务软修正逻辑 (Clean B) 的实际效果
+      - name: tip_amount
+        description: "Cash payments (2) should always have 0.00 tip."
+        tests:
+          - not_null
+          # 使用自定义 SQL 宏或 dbt_expectations 来校验：当 payment_type = '2' 时，tip 必须为 0
+
+      # 3. 验证字典归化 (Clean A) 的有效性
+      - name: rate_code_id
+        description: "Nullified invalid rate codes"
+        tests:
+          - accepted_values:
+              arguments:
+                values: [1, 2, 3, 4, 5, 6, -1]
+              # 这里不加 not_null，因为非法的代码已经被我们主动置为 NULL 了
+
+      # 4. 验证软标记 (Clean C) 的产出
+      - name: is_valid_financial_logic
+        tests:
+          - not_null
+
+      - name: vendor_id 
+        tests: 
+          - accepted_values:
+              arguments: 
+                  values: ['1', '2' , '6', 'CMT', 'VTS', 'DDS', '99'] 
+                  config: 
+                    severity: warn
+          

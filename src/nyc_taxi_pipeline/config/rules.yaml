@@ -1,31 +1,31 @@
 # src/nyc_taxi_pipeline/config/rules.yaml
 rules:
   - name: missing_pickup
-    expr: "pickup_datetime IS NULL"
+    expr: "{COL_PU_DATETIME_UTC} IS NULL"
   
   - name: missing_dropoff
-    expr: "dropoff_datetime IS NULL"
+    expr: "{COL_DO_DATETIME_UTC} IS NULL"
   
   - name: dropoff_before_pickup
-    expr: "pickup_datetime IS NOT NULL AND dropoff_datetime IS NOT NULL AND dropoff_datetime < pickup_datetime"
+    expr: "{COL_PU_DATETIME_UTC} IS NOT NULL AND {COL_DO_DATETIME_UTC} IS NOT NULL AND {COL_DO_DATETIME_UTC} < {COL_PU_DATETIME_UTC}"
   
   - name: passenger_count_invalid
-    expr: "passenger_count < 0 OR passenger_count > 9"
+    expr: "{COL_PASSENGER_COUNT} < 0 OR {COL_PASSENGER_COUNT} > 9"
   
   - name: total_amount_negative
-    expr: "total_amount < 0"
+    expr: "{COL_TOTAL_AMOUNT} < 0.0"
   
   - name: invalid_YYYYMM
-    expr: "YYYYMM < 190001 OR YYYYMM > 300012"
+    expr: "{PARTITION_COL_YYYYMM} < 190001 OR {PARTITION_COL_YYYYMM} > 300012"
   
   - name: duration_out_of_range
-    expr: "duration_min < 2.0 OR duration_min > 180"
+    expr: "{COL_DURATION_MIN} < 2.0 OR {COL_DURATION_MIN} > 180.0"
   
   - name: distance_too_small
-    expr: "trip_distance <= 0.1"
+    expr: "{COL_TRIP_DISTANCE} <= 0.1"
   
   - name: efficiency_too_high
-    expr: "temp_eff >= 15.0"
+    expr: "{COL_FARE_PER_MINUTE} >= 15.0"
   
   - name: fare_too_low
-    expr: "fare_amount <= 2.5"
+    expr: "{COL_FARE_AMOUNT} <= 2.5"

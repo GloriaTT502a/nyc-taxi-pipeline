@@ -1,0 +1,38 @@
+version: 2
+
+unit_tests:
+  - name: test_int_financial_soft_correction
+    description: "Verify that cash payments strictly yield 0.00 tip amount regardless of raw data."
+    model: int_nyc_taxi__yellow_trips_cleaned
+
+    given:
+      - input: ref('stg_nyc_taxi__yellow_trips')
+        rows:
+          # 模拟一个脏数据：支付方式为现金('2')，但原始计价器居然记录了 5.50 的小费
+          - {payment_type: '2', tip_amount: 5.50}
+          # 模拟正常数据：信用卡('1')，有小费
+          - {payment_type: '1', tip_amount: 3.00}
+
+    expect:
+      rows:
+        # 期望输出：现金的小费必须被成功强转为 0.00
+        - {payment_type: '2', tip_amount: 0.00}
+        # 期望输出：信用卡的小费保持原样
+        - {payment_type: '1', tip_amount: 3.00}
+
+  - name: test_int_mta_tax_validation_logic
+    description: "Verify the soft flagging logic for standard and disputed MTA tax rules."
+    model: int_nyc_taxi__yellow_trips_cleaned
+    
+    given:
+      - input: ref('stg_nyc_taxi__yellow_trips')
+        rows:
+          - {mta_tax_amount: 0.50, payment_type: '1'}  # 正常收税
+          - {mta_tax_amount: -0.50, payment_type: '4'} # 争议退款 (合法)
+          - {mta_tax_amount: 9.99, payment_type: '1'}  # 乱收税的脏数据
+
+    expect:
+      rows:
+        - {is_valid_financial_logic: true}
+        - {is_valid_financial_logic: true}
+        - {is_valid_financial_logic: false} # 脏数据应该被准确拦截并标记为 false

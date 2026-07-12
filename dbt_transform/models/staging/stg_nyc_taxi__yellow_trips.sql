@@ -10,12 +10,11 @@
 -- 标签：方便后续只运行特定标签的模型
 -- 开关：设为 false 即可停用该模型
 
-
 with source as (
-select * from {{ source('databricks_ingest', 'yellow_trips') }}
+    select * from {{ source('databricks_ingest', 'yellow_trips') }}
 ), 
 renamed as (
-select
+    select
         -- ==========================================
         -- 主键与外键 (Primary & Foreign Keys)
         -- ==========================================
@@ -26,14 +25,15 @@ select
         cast(PULocationID as int) as pickup_location_id,        -- 规范：避免拼音/简写，全拼更清晰
         cast(DOLocationID as int) as dropoff_location_id,
         cast(rate_code as int) as rate_code_id,                 -- 规范：指向维表的外键补充 _id
+        
         -- ==========================================
         -- 时间戳 (Timestamps)
         -- ==========================================
         cast(pickup_datetime as timestamp) as pickup_at,        -- 规范：时间戳以 _at 结尾
         cast(dropoff_datetime as timestamp) as dropoff_at,
-
-        cast(pickup_datetime_utc as timestamp) as pickup_at_utc,        -- 规范：时间戳以 _at 结尾
+        cast(pickup_datetime_utc as timestamp) as pickup_at_utc,
         cast(dropoff_datetime_utc as timestamp) as dropoff_at_utc,
+        
         -- ==========================================
         -- 维度与分类标志 (Dimensions & Flags)
         -- ==========================================
@@ -42,12 +42,14 @@ select
         -- 优化：将 'Y'/'N' 的字符串转换为原生 BOOLEAN 类型
         store_and_fwd_flag as raw_store_and_fwd_flag, 
         {{ cast_to_boolean('store_and_fwd_flag') }} as has_store_and_fwd, 
+        
         -- ==========================================
         -- 物理度量指标 (Metrics - Physical)
         -- ==========================================
         cast(passenger_count as int) as passenger_count,
         cast(trip_distance as double) as trip_distance_miles,   -- 规范：数值型指标明确单位
         cast(duration_min as double) as trip_duration_minutes,
+        
         -- ==========================================
         -- 财务金额明细 (Metrics - Financial)
         -- ==========================================
@@ -80,6 +82,7 @@ select
         
         total_amount as raw_total_amount, 
         cast(total_amount as decimal(9,2)) as total_amount,
+        
         -- ==========================================
         -- 空间索引及数据质量标记 (Spatial & DQ Flags)
         -- ==========================================
@@ -88,22 +91,29 @@ select
         -- 优化：将 INT 类型的 0/1 转换为 BOOLEAN 类型
         cast(is_pickup_fallback = 1 as boolean) as is_pickup_fallback,
         cast(is_dropoff_fallback = 1 as boolean) as is_dropoff_fallback,
+        
         -- ==========================================
         -- 特征项 (Features)
         -- ==========================================
-        -- 优化：彻底消除临时命名，赋予确切的业务含义 
-        cast(temp_eff as double) as efficiency_score, 
-        cast(bronze_run_id as string)           as meta_bronze_run_id,
-        cast(_run_id as string)                 as meta_silver_run_id,
-        cast(_input_file as string)             as meta_input_file_name,
+        -- 🌟 修复 1：对接物理层的 fare_per_minute，替代已废弃的 temp_eff
+        cast(fare_per_minute as double) as efficiency_score, 
+        
+        -- ==========================================
+        -- 元数据 (Metadata)
+        -- ==========================================
+        -- 🌟 修复 2：严格对齐 Silver Schema 中的审计字段名
+        cast(_bronze_run_id as string)           as meta_bronze_run_id,
+        cast(_silver_run_id as string)           as meta_silver_run_id,
+        cast(_input_file as string)              as meta_input_file_name,
     
         -- 时间戳统一使用 _at 后缀，并显式 CAST 保证类型安全
-        cast(bronze_load_timestamp as TIMESTAMP) as meta_bronze_load_at,
-        cast(_processed_at as TIMESTAMP)         as meta_silver_processed_at, 
+        cast(_bronze_load_timestamp as timestamp) as meta_bronze_load_at,
+        cast(_silver_load_timestamp as timestamp) as meta_silver_processed_at, 
         
         -- dbt data lineage 
         '{{ invocation_id }}' as meta_dbt_staging_invocation_id,
         {{ current_timestamp() }} as meta_staging_processed_at 
+
 from source t 
 )
 select * from renamed
