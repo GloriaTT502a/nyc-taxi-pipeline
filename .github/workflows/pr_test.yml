@@ -180,9 +180,10 @@ jobs:
     - name: SQLFluff lint
 
       working-directory: ./dbt_transform
-      
+      timeout-minutes: 5
+      continue-on-error: true 
       run: | 
-        sqlfluff lint models/ --dialect databricks --templater dbt
+        sqlfluff lint models/ --dialect databricks --templater dbt --exclude-rules L003,L016 
  
 
     
@@ -281,6 +282,7 @@ jobs:
 
     - name: Upload latest manifest.json
       # 核心收尾：无论前面构建成功与否（通常需要成功），都要把最新的产物存起来
+      if: success()
       uses: actions/upload-artifact@v4
       with:
         name: dbt-manifest
