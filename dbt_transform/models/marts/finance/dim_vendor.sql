@@ -6,8 +6,19 @@
 }}
 
 with source_data as (
-    select * from {{ ref('seed_vendor_mapping') }}
+    select * from (
+        values 
+            ('1', 'Creative Mobile Technologies, LLC'),
+            ('2', 'Curb Mobility, LLC'),
+            ('6', 'Myle Technologies Inc'),
+            ('7', 'Helix'),
+            ('CMT', 'Creative Mobile Technologies, LLC'),
+            ('VTS', 'VeriFone Transportation Systems, Inc.'),
+            ('DDS', 'Digital Dispatch Systems, Inc.'),
+            ('99', 'Unknown')
+    ) as t(vendor_id, vendor_name) 
 ),
+
 
 clean_vendor as (
     select
