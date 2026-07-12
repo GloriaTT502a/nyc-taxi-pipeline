@@ -74,10 +74,6 @@ jobs:
     timeout-minutes: 15
 
     steps:
-    - name: Debug dbt seeds
-      working-directory: ./dbt_transform
-      run: |
-        dbt ls --resource-type seed
     
     - name: Checkout code
       uses: actions/checkout@v4 
@@ -94,6 +90,17 @@ jobs:
         # Install deps for dbt in pyproject ONLY
         pip install -e ".[dbt]"
 
+    - name: Debug repository structure
+      run: |
+        pwd
+        ls -lah
+        find . -maxdepth 2 -type d
+
+    - name: Debug dbt seeds
+      working-directory: ./dbt_transform
+      run: |
+        dbt ls --resource-type seed
+    
     - name: dbt deps
 
       working-directory: ./dbt_transform
