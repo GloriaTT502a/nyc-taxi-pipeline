@@ -104,6 +104,14 @@ jobs:
         python -m pip install --upgrade pip
         # Install deps for dbt in pyproject ONLY
         pip install -e ".[dbt]"
+    
+    - name: dbt deps
+
+      working-directory: ./dbt_transform
+
+      run: |
+
+        dbt deps
 
     - name: Debug repository structure
       run: |
@@ -115,14 +123,6 @@ jobs:
       working-directory: ./dbt_transform
       run: |
         dbt ls --target ci_pipeline --resource-type seed
-    
-    - name: dbt deps
-
-      working-directory: ./dbt_transform
-
-      run: |
-
-        dbt deps
 
 
     - name: dbt parse (offline)
