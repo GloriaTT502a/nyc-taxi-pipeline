@@ -74,6 +74,11 @@ jobs:
     timeout-minutes: 15
 
     steps:
+    - name: Debug dbt seeds
+      working-directory: ./dbt_transform
+      run: |
+        dbt ls --resource-type seed
+    
     - name: Checkout code
       uses: actions/checkout@v4 
 
