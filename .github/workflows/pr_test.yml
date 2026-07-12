@@ -114,7 +114,7 @@ jobs:
     - name: Debug dbt seeds
       working-directory: ./dbt_transform
       run: |
-        dbt ls --resource-type seed
+        dbt ls --target ci_pipeline --resource-type seed
     
     - name: dbt deps
 
@@ -130,7 +130,7 @@ jobs:
       working-directory: ./dbt_transform
 
       run: |
-        dbt parse || true 
+        dbt parse --target ci_pipeline 
 
 
 # dbt CLOUD integration (Pull Request ONLY)
