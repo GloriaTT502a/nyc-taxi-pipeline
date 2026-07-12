@@ -73,6 +73,21 @@ jobs:
     runs-on: ubuntu-22.04 
     timeout-minutes: 15
 
+    env:
+
+        DBT_PROFILES_DIR: .
+
+
+        # dummy values
+        # 防止 env_var 报错
+
+        DATABRICKS_HOST: "https://127.0.0.1"
+
+        DATABRICKS_TOKEN: "mock_token_prevent_sdk_fallback"
+
+        DATABRICKS_HTTP_PATH: "/mock"
+        DATABRICKS_AUTH_TYPE: "pat"
+
     steps:
     
     - name: Checkout code
@@ -113,22 +128,6 @@ jobs:
     - name: dbt parse (offline)
 
       working-directory: ./dbt_transform
-
-      env:
-
-        DBT_PROFILES_DIR: .
-
-
-        # dummy values
-        # 防止 env_var 报错
-
-        DATABRICKS_HOST: "https://127.0.0.1"
-
-        DATABRICKS_TOKEN: "mock_token_prevent_sdk_fallback"
-
-        DATABRICKS_HTTP_PATH: "/mock"
-        DATABRICKS_AUTH_TYPE: "pat"
-
 
       run: |
         dbt parse || true 
