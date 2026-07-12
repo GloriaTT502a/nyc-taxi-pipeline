@@ -19,6 +19,7 @@ dbt_transform:
       host: "{{ env_var('DATABRICKS_HOST') }}"
       http_path: "{{ env_var('DATABRICKS_HTTP_PATH') }}"
       token: "{{ env_var('DATABRICKS_TOKEN') }}"
+      auth_type: pat
 
       catalog: nyc
       schema: dev
@@ -34,4 +35,6 @@ dbt_transform:
       host: "{{ env_var('DATABRICKS_HOST') }}"
       http_path: "{{ env_var('DATABRICKS_HTTP_PATH') }}"
       token: "{{ env_var('DATABRICKS_TOKEN') }}"
+      auth_type: pat
+      
       threads: 16 
