@@ -4,16 +4,19 @@
 {{ 
     config(
         materialized='incremental',
-        unique_key='trip_id', 
-        partition_by=['partition_year_month'], 
-        meta={'zorder': 'dq_error_type'}, 
+        incremental_strategy='insert_overwrite', 
+        cluster_by=['partition_year_month'],  
         tags=['audit', 'dq']
         
     ) 
 }}
 
 with int_trips as (
+    
     select * from {{ ref('int_nyc_taxi__yellow_trips_cleaned') }}
+    {% if is_incremental() and var('target_month', none) is not none %}
+        where partition_year_month = {{ var('target_month') }}
+    {% endif %}
 )
 
 select

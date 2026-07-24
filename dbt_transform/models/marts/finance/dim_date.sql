@@ -1,7 +1,8 @@
 {{ 
     config(
         materialized='table',
-        tags=['marts', 'dimension']
+        cluster_by=['date_id', 'year_month_num'],
+        tags=['marts', 'dimension', 'static']
     ) 
 }}
 
@@ -11,14 +12,14 @@ with date_spine as (
 )
 
 select
-    -- 🌟 工业标准主键：YYYYMMDD 格式的整数型 ID
+    -- 工业标准主键：YYYYMMDD 格式的整数型 ID
     cast(date_format(date_actual, 'yyyyMMdd') as int) as date_id,
     
     date_actual,
     year(date_actual) as year_num,
     month(date_actual) as month_num,
     
-    -- 🌟 新增：年月组合，例如 200901，或者 '2009-01'。对齐我们在 stg 层使用的 partition_year_month
+    -- 新增：年月组合，例如 200901，或者 '2009-01'。对齐我们在 stg 层使用的 partition_year_month
     cast(date_format(date_actual, 'yyyyMM') as int) as year_month_num,
     date_format(date_actual, 'yyyy-MM') as year_month_name,
     

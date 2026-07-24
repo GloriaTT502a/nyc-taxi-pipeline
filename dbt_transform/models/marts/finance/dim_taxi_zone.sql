@@ -1,7 +1,8 @@
 {{ 
     config(
         materialized='table',
-        tags=['dim', 'core', 'spatial']
+        cluster_by=['location_id'], 
+        tags=['dim', 'core', 'spatial','static']
     ) 
 }}
 
@@ -27,16 +28,33 @@ spatial_zones as (
         raw_boundary_wkt,
         h3_cell
     from {{ source('databricks_ingest', 'taxi_zone_h3') }}
+),
+
+joined_zones as (
+    select
+        b.location_id,
+        b.borough,
+        b.zone_name,
+        b.service_zone,
+        b.is_airport,
+        s.raw_boundary_wkt,
+        s.h3_cell
+    from base_zones b
+    left join spatial_zones s
+        on b.location_id = s.location_id
+),
+
+unknown_member as (
+    select 
+        -1 as location_id,
+        'Unknown' as borough,
+        'Unknown / Invalid Zone' as zone_name,
+        'N/A' as service_zone,
+        false as is_airport,
+        cast(null as string) as raw_boundary_wkt,
+        cast(null as string) as h3_cell
 )
 
-select
-    b.location_id,
-    b.borough,
-    b.zone_name,
-    b.service_zone,
-    b.is_airport,
-    s.raw_boundary_wkt,
-    s.h3_cell
-from base_zones b
-left join spatial_zones s
-    on b.location_id = s.location_id
+select * from joined_zones
+union all
+select * from unknown_member 

@@ -12,6 +12,9 @@
 
 with source as (
     select * from {{ source('databricks_ingest', 'yellow_trips') }}
+    {% if var('target_month', none) is not none %}
+    where YYYYMM = {{ var('target_month') }}
+    {% endif %} 
 ), 
 renamed as (
     select

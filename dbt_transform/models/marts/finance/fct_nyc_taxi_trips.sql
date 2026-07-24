@@ -1,22 +1,30 @@
+{% set default_month = run_started_at.strftime("%Y%m") %} 
+{% set target_month = var('target_yyyymm', default_month) %}
+
 {{ 
     config(
         materialized='incremental',
+        incremental_strategy='insert_overwrite', 
         unique_key='trip_id',
         schema='core',
-        partition_by=['partition_year_month'],
-        meta={'zorder': 'pickup_location_id'},
-        tags=['marts', 'fact', 'core']
+        partition_by=['partition_year_month'], 
+        tags=['marts', 'fact', 'core', 'nyc_yellow_taxi']
     ) 
 }}
 
 with cleaned_data as (
     select * from {{ ref('int_nyc_taxi__yellow_trips_cleaned') }}
-    {% if is_incremental() %}
-    where meta_int_processed_at > (select max(meta_dbt_fct_processed_at) from {{ this }})
+    {% if this is not none %}
+        {% if is_incremental() and var('target_month', none) is not none %}
+            where partition_year_month = {{ var('target_month') }}
+        {% endif %}
     {% endif %}
 )
 
 select
+    
+    partition_year_month, 
+
     -- 1. 基础字段与主键
     trip_id,
     taxi_type,
@@ -65,7 +73,6 @@ select
     is_pickup_fallback,
     is_dropoff_fallback,
     efficiency_score,
-    partition_year_month,
 
     -- 4. Clean C: Soft Flagging
     is_valid_financial_logic,

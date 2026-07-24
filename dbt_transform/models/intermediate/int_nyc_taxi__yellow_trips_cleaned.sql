@@ -3,16 +3,21 @@
 {{ 
     config(
         materialized='incremental',
-        unique_key='trip_id',
-        meta={
-            'zorder': 'dq_error_type'
-        },
+        incremental_strategy='insert_overwrite', 
+        cluster_by=['partition_year_month'], 
         tags=['audit', 'dq']
     ) 
 }}
 
 with staging_trips as (
     select * from {{ ref('stg_nyc_taxi__yellow_trips') }}
+
+    {% if this is not none %}
+        {% if is_incremental() and var('target_month', none) is not none %}
+            where partition_year_month = {{ var('target_month') }}
+        {% endif %}
+    {% endif %}
+    
 )
 
 select
@@ -21,7 +26,7 @@ select
     taxi_type, 
     case 
         when vendor_id in ('1', '2', '6', 'CMT', 'VTS', 'DDS') then vendor_id
-        else '99' -- 修正：将 8, 33, 99, 128 等所有非法值统一归化为 -1 (未知成员)
+        else '-1' -- 修正：将 8, 33, 99, 128 等所有非法值统一归化为 -1 (未知成员)
     end as vendor_id,
     pickup_location_id,
     dropoff_location_id,
