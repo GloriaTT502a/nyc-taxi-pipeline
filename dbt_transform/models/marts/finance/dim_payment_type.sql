@@ -1,7 +1,8 @@
 {{ 
     config(
         materialized='table',
-        tags=['dim', 'core']
+        
+        tags=['dim', 'core', 'static']
     ) 
 }}
 
@@ -15,6 +16,16 @@ unique_payments as (
         payment_code,
         standard_payment_type
     from source_data
+), 
+unknown_member as (
+    select 
+        -1 as payment_code,
+        'Unknown' as standard_payment_type
+), 
+combined_payments as (
+    select * from unique_payments
+    union all
+    select * from unknown_member
 )
 
 select
@@ -30,7 +41,7 @@ select
         else false 
     end as is_cash_payment                                  
 
-from unique_payments
+from combined_payments
 
 -- 保证最终输出的维度表没有任何空值主键
 where payment_code is not null

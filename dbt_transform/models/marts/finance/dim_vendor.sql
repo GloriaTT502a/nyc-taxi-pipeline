@@ -4,7 +4,7 @@
 
         materialized='table',
 
-        tags=['dim', 'core']
+        tags=['dim', 'core', 'static']
 
     ) 
 
@@ -17,9 +17,6 @@ with source_data as (
     select * from {{ ref('seed_vendor_mapping') }}
 
 ),
-
-
-
 
 
 clean_vendor as (
@@ -38,9 +35,9 @@ clean_vendor as (
 
         cast(trim(vendor_name) as string) as vendor_name
 
-
-
     from source_data
+    where vendor_id is not null 
+    and trim(vendor_id) != '-1'
 
 )
 

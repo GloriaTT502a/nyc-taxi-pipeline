@@ -5,6 +5,10 @@ unit_tests:
     description: "Verify that cash payments strictly yield 0.00 tip amount regardless of raw data."
     model: int_nyc_taxi__yellow_trips_cleaned
 
+    overrides:
+      macros:
+        is_incremental: false 
+    
     given:
       - input: ref('stg_nyc_taxi__yellow_trips')
         rows:
@@ -23,6 +27,10 @@ unit_tests:
   - name: test_int_mta_tax_validation_logic
     description: "Verify the soft flagging logic for standard and disputed MTA tax rules."
     model: int_nyc_taxi__yellow_trips_cleaned
+    
+    overrides:
+      macros:
+        is_incremental: false
     
     given:
       - input: ref('stg_nyc_taxi__yellow_trips')
