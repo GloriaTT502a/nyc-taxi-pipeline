@@ -4,6 +4,7 @@ import argparse
 import logging
 from datetime import datetime
 
+import pyspark.sql.functions as F 
 
 from nyc_taxi_pipeline.utils.spark_utils import get_spark_session
 from nyc_taxi_pipeline.config.settings import PipelineSettings
@@ -23,6 +24,13 @@ def main():
     # 1. Parse Command Line Arguments
     # ==========================================
     parser = argparse.ArgumentParser(description="Run NYC Taxi Silver Pipeline")
+    parser.add_argument(
+        "--target-month", 
+        type=int, 
+        required=True, 
+        help="Target month in YYYYMM format (e.g., 202601)"
+    )
+
     parser.add_argument("--env", type=str, default="dev", choices=["local", "dev", "qa", "prod"], help="Environment")
     parser.add_argument("--catalog", type=str, default=None, help="Unity Catalog name to override")
     
@@ -31,8 +39,10 @@ def main():
     
     args = parser.parse_args()
 
+    target_month = args.target_month 
     run_id = f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}"
-    logger.info(f"Starting Silver Pipeline Run | RunID: {run_id} | Env: {args.env}") 
+    logger.info(f"Starting Silver Pipeline Run | Target Month: {target_month} | RunID: {run_id} | Env: {args.env}") 
+
 
     # ==========================================
     # 2. Initialize Core Components & Settings
@@ -79,7 +89,7 @@ def main():
     # 4. Data Ingestion
     # ========================================== 
     logger.info(f"Reading source Bronze table: {bronze_table}") 
-    bronze_df = spark.read.table(bronze_table)
+    bronze_df = spark.read.table(bronze_table).filter(F.col("YYYYMM") == str(target_month))
     
     logger.info(f"Reading Spatial Dimension table: {zone_dim_table}")
     zone_dim_df = spark.read.table(zone_dim_table) 
@@ -100,7 +110,8 @@ def main():
         pipeline = NYCTaxiSilverPipeline(
             settings=settings,
             spark=spark, 
-            run_id=run_id, 
+            run_id=run_id,
+            target_month=str(target_month),  
             zone_dim_df=zone_dim_df, 
             target_table=target_silver_table, 
             audit_table=audit_table, 

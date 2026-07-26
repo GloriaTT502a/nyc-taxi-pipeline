@@ -17,7 +17,12 @@ class SilverDeltaWriter:
        to automatically optimize I/O and data skipping.
     """ 
     @staticmethod 
-    def upsert(spark: SparkSession, df: DataFrame, table_name: str) -> None: 
+    def overwrite_month(
+        spark: SparkSession, 
+        df: DataFrame, 
+        table_name: str, 
+        target_month: str 
+        ) -> None: 
         # 1. Handle initial write for new tables
         if not spark.catalog.tableExists(table_name):
             logger.info(f"Target table {table_name} does not exist, performing initial full write...")
@@ -25,38 +30,28 @@ class SilverDeltaWriter:
                 df.write
                 .format("delta")
                 .mode("overwrite")
+                .partitionBy("YYYYMM")
                 .saveAsTable(table_name)
             )
             return
 
-        # 2. Prepare source data view
-        # Using a hashed view name to prevent collisions during concurrent job runs
-        view_name = f"source_updates_{uuid.uuid4().hex}"
-        df.createOrReplaceTempView(view_name)
-
-        # 3. Construct native SQL Merge statement
-        # No manual partition calculation required; Databricks engine automatically 
-        # utilizes Liquid Clustering indices for optimized data skipping.
-        merge_query = f"""
-            MERGE INTO {table_name} AS target
-            USING {view_name} AS source
-            ON target.{COL_TRIP_KEY} = source.{COL_TRIP_KEY}
-            WHEN MATCHED THEN 
-                UPDATE SET *
-            WHEN NOT MATCHED THEN 
-                INSERT *
-        """
-
+        # 2. 如果表已存在，使用 replaceWhere 进行幂等覆写
         try:
-            logger.info(f"Executing native SQL Merge write: {table_name}")
-            spark.sql(merge_query)
-            logger.info("Upsert SQL executed successfully.")
+            logger.info(f"Run replaceWhere: {table_name} | 月份: {target_month}")
+            
+            # replaceWhere 会指示 Delta 引擎：
+            # "找到并物理删除该表中 YYYYMM = target_month 的所有旧数据，并将 df 中的新数据写入"
+            (
+                df.write
+                .format("delta")
+                .mode("overwrite")
+                .option("replaceWhere", f"YYYYMM = '{target_month}'")
+                .saveAsTable(table_name)
+            )
+            
+            logger.info("replaceWhere successful")
+            
         except Exception as e:
-            logger.error(f"SQL Merge failed! Possible schema mismatch or drift: {e}")
-            raise e
-        finally:
-            try:
-                spark.catalog.dropTempView(view_name)
-            except Exception:
-                pass  
+            logger.error(f"replaceWhere failed! 可能是 Schema 发生不兼容变更 (Drift) 或数据约束冲突: {e}")
+            raise e   
         

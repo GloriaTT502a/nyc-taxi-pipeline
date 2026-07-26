@@ -30,16 +30,10 @@ def main():
     # ==========================================
     parser = argparse.ArgumentParser(description="Run NYC Taxi Bronze Pipeline")
     parser.add_argument(
-        "--start-month", 
+        "--target-month", 
         type=int, 
         required=True, 
-        help="Start month in YYYYMM format (e.g., 202601)"
-    )
-    parser.add_argument(
-        "--end-month", 
-        type=int, 
-        required=True, 
-        help="End month in YYYYMM format (e.g., 202605)"
+        help="Target month in YYYYMM format (e.g., 202601)"
     )
     parser.add_argument(
         "--env", 
@@ -59,13 +53,12 @@ def main():
     
     args = parser.parse_args()
     
-    start_time = args.start_month
-    end_time = args.end_month
+    target_month = args.target_month
     
     # Generate a unique Run ID for this batch
     current_run_id = str(uuid.uuid4())
     logger.info(f"Starting Bronze Pipeline Run | RunID: {current_run_id} | Env: {args.env}")
-    logger.info(f"Processing period: {start_time} to {end_time}")
+    logger.info(f"Processing target month: {target_month}")
 
     # ==========================================
     # 2. Initialize Core Components
@@ -103,7 +96,7 @@ def main():
         loader = TaxiBronzeLoader(settings=settings, spark=spark, run_id=current_run_id)
         
         # Execute the high-performance idempotent write logic
-        dq_result = loader.write_idempotent(start_time=start_time, end_time=end_time)
+        dq_result = loader.write_idempotent(target_month=target_month)
         
         # ==========================================
         # 4. Log Telemetry and Audit Metrics
@@ -119,8 +112,7 @@ def main():
             rejected_count=0, # Bronze typically accepts all data
             custom_metrics={
                 "processing_time_seconds": duration_seconds,
-                "start_period": start_time,
-                "end_period": end_time
+                "target_month": target_month 
             }
         )
         

@@ -39,6 +39,7 @@ class NYCTaxiSilverPipeline:
         spark: SparkSession, 
         settings: PipelineSettings,
         run_id: str, 
+        target_month: str, 
         zone_dim_df: DataFrame,
         target_table: str = None, 
         audit_table: str = None, 
@@ -47,6 +48,7 @@ class NYCTaxiSilverPipeline:
         self.spark = spark
         self.settings = settings
         self._silver_run_id = run_id
+        self.target_month = target_month 
         
         # 依赖注入：维度表从外部传入，解耦 Pipeline 对外部存储的强依赖
         self.zone_dim_df = zone_dim_df  
@@ -176,19 +178,25 @@ class NYCTaxiSilverPipeline:
                     .select(*EXPECTED_SILVER_COLS)
                 ) 
                 
-                SilverDeltaWriter.upsert(
+                SilverDeltaWriter.overwrite_month(
                     spark=self.spark, 
                     df=ready_to_write_df, 
-                    table_name=self.target_table 
+                    table_name=self.target_table,
+                    target_month=self.target_month
                 )
 
             # 统一将脏数据(DQ失败 + 去重失败)写入隔离区 (Quarantine Table)
             if total_rejected > 0:
                 self.logger.info(f"将 {total_rejected} 条异常数据写入隔离区: {self.quarantine_table}")
-                # unionByName 容忍两边 DataFrame 列顺序不一致或存在缺失列
                 rejected_combined = dq_rejected_df.unionByName(dup_rejected_df, allowMissingColumns=True)
-                rejected_combined.write.format("delta").mode("append").saveAsTable(self.quarantine_table)
-
+                
+                # 隔离区同样使用 overwrite_month，防止多次回溯产生大量重复脏数据
+                SilverDeltaWriter.overwrite_month(
+                    spark=self.spark,
+                    df=rejected_combined,
+                    table_name=self.quarantine_table,
+                    target_month=self.target_month
+                )
             # ==========================================
             # 阶段 8：写入系统审计日志 (双写)
             # ==========================================

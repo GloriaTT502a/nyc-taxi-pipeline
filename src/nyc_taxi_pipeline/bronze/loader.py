@@ -51,19 +51,14 @@ class TaxiBronzeLoader:
     # ==========================================
     # 1. 路径推导与文件发现
     # ==========================================
-    def _generate_target_paths(self, start_time: int, end_time: int) -> List[str]:
+    def _generate_target_paths(self, target_month: int) -> List[str]:
         """生成目标时间区间内的预期物理文件路径列表。"""
-        start_date = datetime.strptime(str(start_time), "%Y%m")
-        end_date = datetime.strptime(str(end_time), "%Y%m")
+        target_str = str(target_month)
+        yyyy_mm_str = f"{target_str[:4]}-{target_str[4:]}"
+
         
-        target_paths = []
-        current_date = start_date
-        while current_date <= end_date:
-            yyyy_mm_str = current_date.strftime("%Y-%m")
-            target_paths.append(f"{self.yellow_path}yellow_tripdata_{yyyy_mm_str}.parquet")
-            current_date += relativedelta(months=1)
-            
-        return target_paths
+        return [f"{self.yellow_path}yellow_tripdata_{yyyy_mm_str}.parquet"] 
+    
 
     def _discover_existing_files(self, paths: List[str]) -> List[str]:
         """
@@ -168,12 +163,12 @@ class TaxiBronzeLoader:
     # ==========================================
     # 4. 幂等落盘写入 (Liquid Clustering 适配)
     # ==========================================
-    def _write_bronze(self, df: DataFrame, partitions: List[str]):
+    def _write_bronze(self, df: DataFrame, target_month: List[str]):
         """
         执行基于 replaceWhere 的选择性覆盖 (Selective Overwrite)。
         拥抱 Liquid Clustering：不使用 partitionBy。
         """
-        replace_condition = f"YYYYMM IN ({','.join(partitions)})"
+        replace_condition = f"YYYYMM = '{target_month}'"
         
         writer = (
             df.write
@@ -208,16 +203,16 @@ class TaxiBronzeLoader:
             return 0
 
     # ==========================================
-    # 🌟 主流水线编排器
+    # 主流水线编排器
     # ==========================================
-    def write_idempotent(self, start_time: int, end_time: int) -> DQResult:
+    def write_idempotent(self, target_month: int) -> DQResult:
         """
         流水线入口：负责组装各个微服务步骤，完成从读取到写入的完整幂等闭环。
         """
-        logger.info(f"Starting Bronze load for period {start_time} to {end_time}")
+        logger.info(f"Starting Bronze load for target month {target_month}")
 
         # Step 1: Discover Files
-        expected_paths = self._generate_target_paths(start_time, end_time)
+        expected_paths = self._generate_target_paths(target_month)
         valid_paths = self._discover_existing_files(expected_paths)
         
         if not valid_paths:
@@ -229,19 +224,13 @@ class TaxiBronzeLoader:
         norm_df = normalize_dataframe(df=raw_df, run_id=self.run_id) 
 
         # 严格过滤出本批次关心的时间段（防御上游文件中混杂的脏数据）
-        filtered_df = norm_df.filter((F.col("YYYYMM") >= start_time) & (F.col("YYYYMM") <= end_time)) 
-
-        # Step 3: Extract dynamically present YYYYMM values for replaceWhere
-        partitions = [str(r["YYYYMM"]) for r in filtered_df.select("YYYYMM").distinct().collect()]
-        if not partitions:
-            logger.info("DataFrame is empty after applying time filter. Skipping write.")
-            return DQResult(total_rows=0, bad_rows=0, bad_by_rule={})
+        filtered_df = norm_df.filter((F.col("YYYYMM") == target_month)) 
 
         # Step 4: Schema Defense
         aligned_df = self._align_to_target_schema(filtered_df)
 
         # Step 5: Execute Idempotent Write
-        self._write_bronze(df=aligned_df, partitions=partitions)
+        self._write_bronze(df=aligned_df, target_month=target_month)
 
         # Step 6: Telemetry & Return
         total_ingested = self._collect_metrics()

@@ -47,7 +47,38 @@ echo "[4/4] Running..."
 # databricks bundle run run_spatial_pipeline -t dev
 # databricks bundle run run_bronze_pipeline -t dev
 # databricks bundle run run_silver_pipeline -t dev
-databricks bundle run run_spatial_pipeline -t dev
+#databricks bundle run run_spatial_pipeline -t dev
+
+
+##############
+## Run Spatial
+##############
+
+# databricks bundle run run_spatial_pipeline -t dev 
+
+
+##############
+## Run Bronze and Silver 
+############## 
+
+TARGET_MONTHS=("201003" "201004" "201101" "201102")
+
+
+
+for month in "${TARGET_MONTHS[@]}"; do
+  echo ""
+  echo "-----------------------------------------"
+  echo ">>> [4.2] Processing Target Month: $month"
+  echo "-----------------------------------------"
+  
+  echo "-> Triggering Bronze Pipeline for $month..."
+  databricks bundle run run_bronze_pipeline -t dev --params "target_month=$month"
+  
+  echo "-> Triggering Silver Pipeline for $month..."
+  databricks bundle run run_silver_pipeline -t dev --params "target_month=$month"
+done
+
+
 
 echo ""
 echo "========================================="
