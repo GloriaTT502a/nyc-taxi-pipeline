@@ -37,4 +37,4 @@ dbt_transform:
       token: "{{ env_var('DATABRICKS_TOKEN') }}"
       auth_type: pat
       
-      threads: 16 
+      threads: 4
