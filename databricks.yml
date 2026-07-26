@@ -40,6 +40,11 @@ resources:
     # ========================================== 
     run_bronze_pipeline:
       name: "[${bundle.target}] NYC Taxi Bronze Run"
+      
+      parameters:
+        - name: target_month
+          default: "201001"
+      
       environments:
         - environment_key: default
           spec:
@@ -54,10 +59,8 @@ resources:
             package_name: nyc_taxi_pipeline
             entry_point: run_bronze 
             parameters:
-              - "--start-month"
-              - "201001"
-              - "--end-month"
-              - "201002"
+              - "--target-month"
+              - "{{job.parameters.target_month}}" 
               # Env Injection 
               - "--env"
               - "${var.runtime_env}"
@@ -70,6 +73,10 @@ resources:
     run_silver_pipeline:
       name: "[${bundle.target}] NYC Taxi Silver Run"
 
+      parameters:
+        - name: target_month
+          default: "201001"
+      
       environments:
         - environment_key: default
 
@@ -88,6 +95,8 @@ resources:
             package_name: nyc_taxi_pipeline
             entry_point: run_silver
             parameters:
+              - "--target-month"
+              - "{{job.parameters.target_month}}"
               - "--env"
               - "${var.runtime_env}" 
               - "--catalog"
@@ -116,6 +125,27 @@ resources:
               - "${var.runtime_env}" 
               - "--catalog"
               - "${var.catalog}"
+
+    # ==========================================
+    # 4. Gold Pipeline (dbt Transformation)
+    # ========================================== 
+    run_dbt_pipeline:
+      name: "[${bundle.target}] NYC Taxi dbt Transform"
+      
+      parameters:
+        - name: target_month
+          default: "201001"
+          
+      tasks:
+        - task_key: run_dbt_models
+          
+          existing_cluster_id: "e6851c934b9e0136" 
+          
+          dbt_task:
+            project_directory: "./" 
+            commands:
+              - "dbt deps"
+              - "dbt build -s +fct_nyc_taxi_trips --vars '{\"target_month\": {{job.parameters.target_month}}}'"
 
 targets:
   dev:
