@@ -57,14 +57,11 @@ nyc-taxi-pipeline/
 
 ## 🛠 Deep Dive: Engineering Decisions
 
-### 1. Performance-First Spatial Engineering (H3)
-Traditional point-in-polygon geospatial joins are computationally expensive at scale. By moving spatial processing to the `src/spatial/` module and utilizing **Pandas UDFs backed by Apache Arrow**, the pipeline pre-calculates H3 Hexagonal Hierarchical Indices. This transforms complex spatial queries into simple integer-based joins, reducing downstream query latency by **~40%**.
-
-### 2. The Hybrid "Medallion" Implementation
+### 1. The Hybrid "Medallion" Implementation
 * **Bronze (PySpark):** Handles messy raw data. PySpark is utilized for its superior capability in raw file ingestion, complex schema enforcement, and initial sanitization.
 * **Silver/Gold (dbt):** Once data is validated and structured, `dbt` takes over. This allows analysts to read version-controlled SQL, automatically generated documentation, and clear data lineage.
 
-### 3. Schema Enforcement & DQ Engine
+### 2. Schema Enforcement & DQ Engine
 To prevent a "Data Swamp," the pipeline uses a config-driven utility to validate incoming data against strict schemas and rules before it enters the Silver layer.
 
 ```python
@@ -104,6 +101,5 @@ By calculating `earnings_per_min`, the models expose the hidden **Congestion Cos
 ## 📈 Future Roadmap
 
 - [ ] Complete the Gold layer `dbt` models for Spatial RFM Analysis and Driver Efficiency.
-- [ ] Integrate **Great Expectations** for automated, deep data profiling and anomaly detection.
-- [ ] Implement **MLflow** for robust demand forecasting models localized to specific H3 cells.
+- [ ] Integrate **Great Expectations** for automated data profiling and data validation.
 - [ ] Optimize Databricks SQL Warehouse configurations for advanced cost-efficiency.
