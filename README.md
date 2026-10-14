@@ -19,7 +19,7 @@
 | Category | Technologies |
 | :--- | :--- |
 | **Compute & Engine** | PySpark (Spark 3.x), Databricks Runtime |
-| **Storage & Governance** | Delta Lake, Unity Catalog, AWS S3 / Azure Data Lake |
+| **Storage & Governance** | Unity Catalog |
 | **Transformation** | dbt Core |
 | **Orchestration & CI/CD** | Databricks Workflows, GitHub Actions |
 | **Testing & Quality** | `pytest`, `chispa` (DataFrame testing) |
@@ -44,7 +44,7 @@ nyc-taxi-pipeline/
 ├── src/                    # 🌟 Core Engineering Package (Modular Python)
 │   └── nyc_taxi_pipeline/
 │       ├── spatial/        # GIS & H3 logic; generates optimized lookup tables
-│       ├── bronze/         # Ingestion engine; schema enforcement & Delta conversion
+│       ├── bronze/         # Ingestion engine; schema enforcement & conversion
 │       ├── silver/         # Advanced PySpark transformations & Pandas UDFs
 │       ├── common/         # Shared utilities (logging, decorators)
 │       └── config/         # Environment settings and DQ rule definitions
@@ -87,7 +87,7 @@ To evaluate the true "value" of an H3 cell, we must look beyond gross revenue an
 ### The Core Paradox: Volume $\neq$ Profitability
 This analysis highlights a fundamental mismatch in urban logistics: **the busiest areas are often the least profitable for drivers.**
 
-**The "Busy" Hotspots (Demand Trap):** The analysis aims to examine whether trip volume is heavily concentrated in Midtown and Lower Manhattan during peak rush hours (e.g., Friday 6 PM). However, extreme congestion reduces average speeds to a walking pace (5–8 km/h).
+**The "Busy" Hotspots (Demand Trap):** The analysis aims to examine whether trip volume is heavily concentrated in Midtown and Lower Manhattan during peak rush hours (e.g., Friday 6 PM). 
 
 ### The "Efficiency Trap" Explained
 By calculating `earnings_per_min`, the models expose the hidden **Congestion Cost**:
@@ -101,4 +101,4 @@ By calculating `earnings_per_min`, the models expose the hidden **Congestion Cos
 
 - [ ] Complete the Gold layer `dbt` models for Spatial RFM Analysis and Driver Efficiency.
 - [ ] Integrate **Great Expectations** for automated data profiling and data validation.
-- [ ] Optimize Databricks SQL Warehouse configurations for advanced cost-efficiency.
+- [ ] Optimize Databricks SQL Warehouse configurations for advanced cost efficiency.
