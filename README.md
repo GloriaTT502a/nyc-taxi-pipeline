@@ -1,4 +1,4 @@
-# 🚖 NYC Taxi Pipeline: Production-Grade Lakehouse Architecture
+# 🚖 NYC Taxi Pipeline: Personal Data Engineering Learning Project
 
 > A robust, end-to-end data engineering pipeline implementing the **Medallion Architecture** (Bronze, Silver, Gold). Built with **PySpark, Delta Lake, and dbt** on Databricks, this project processes large-scale geospatial data from the NYC Taxi & Limousine Commission with a strict focus on data quality, spatial optimization, and CI/CD best practices.
 
@@ -6,11 +6,11 @@
 
 ## 🚀 Key Engineering Features
 
-* **Geospatial Optimization:** Implemented **H3 (Hexagonal Hierarchical Indexing)** to encode lat/long coordinates into 64-bit integers, drastically optimizing spatial joins.
+* **Geospatial Optimization:** Implemented **H3 (Hexagonal Hierarchical Indexing)** to encode lat/long coordinates into 64-bit integers, designed to improve spatial join efficiency.
 * **Modular Data Quality (DQ):** Developed a decoupled `apply_dq_rules` framework for dynamic validation of business logic prior to Silver layer promotion.
 * **Hybrid Engineering Approach:** Seamlessly integrates Python/Spark for heavy-duty ingestion with **dbt** for analytical modeling and data governance.
 * **Production-Ready Standard:** Utilizes `src-layout` with Python Namespace Packages, ensuring modularity, testability, and professional distribution.
-* **Automated CI/CD & Testing:** Achieved high code coverage via GitHub Actions, using `pytest` and `chispa` for rigorous DataFrame comparisons.
+* **Automated CI/CD & Testing:** Used `pytest` and `chispa` for rigorous DataFrame comparisons.
 
 ---
 
@@ -39,7 +39,7 @@ nyc-taxi-pipeline/
 │   ├── dbt_project.yml     # dbt configuration for Databricks/Unity Catalog
 │   └── profiles.yml        # Connection profiles
 ├── notebooks/              # Databricks Orchestration Entry Points
-│   ├── 01_Run_Bronze       # Production jobs (invoking src/ logic)
+│   ├── 01_Run_Bronze       # Pipeline orchestration entry point (invoking src/ logic)
 │   └── dev_scratchpad_h3   # Experimental notebooks for spatial research
 ├── src/                    # 🌟 Core Engineering Package (Modular Python)
 │   └── nyc_taxi_pipeline/
@@ -87,8 +87,7 @@ To evaluate the true "value" of an H3 cell, we must look beyond gross revenue an
 ### The Core Paradox: Volume $\neq$ Profitability
 This analysis highlights a fundamental mismatch in urban logistics: **the busiest areas are often the least profitable for drivers.**
 
-1. **The "Busy" Hotspots (Demand Trap):** Heatmaps show trip volume heavily concentrated in Midtown and Lower Manhattan during peak rush hours (e.g., Friday 6 PM). However, extreme congestion reduces average speeds to a walking pace (5–8 km/h).
-2. **The "Golden" Hotspots (Profitability Flow):** High-efficiency cells shift toward the edges of Manhattan, Brooklyn, and Airport corridors (JFK/LGA). These areas allow for "Flow," where drivers can capitalize on distance-based pricing on highways (like the FDR Drive) rather than wait-time pricing.
+**The "Busy" Hotspots (Demand Trap):** The analysis aims to examine whether trip volume is heavily concentrated in Midtown and Lower Manhattan during peak rush hours (e.g., Friday 6 PM). However, extreme congestion reduces average speeds to a walking pace (5–8 km/h).
 
 ### The "Efficiency Trap" Explained
 By calculating `earnings_per_min`, the models expose the hidden **Congestion Cost**:
